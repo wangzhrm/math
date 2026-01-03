@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Math Vocabulary Learning & Quiz</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    .page { display: none; }
+    .active { display: block; }
+
+    /* Buttons */
+    button {
+      margin: 10px;
+      padding: 12px 24px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #3498db;
+      color: white;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    .btn-red { background: #e74c3c; }
+    .btn-red:hover { background: #c0392b; }
+
+    /* Flashcard */
+    .flashcard {
+      width: 90%;
+      height: 200px;
+      margin: 30px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
+    .flashcard:hover {
+      transform: scale(1.02);
+    }
+
+    /* Quiz Options */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 20px auto;
+      max-width: 600px;
+    }
+    .option {
+      padding: 15px;
+      background: #ecf0f1;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 20px;
+      transition: background 0.2s;
+    }
+    .option:hover {
+      background: #d5dbdb;
+    }
+    .wrong { background-color: #fadbd8 !important; }
+    .correct { background-color: #d5f5e3 !important; }
+
+    /* Results */
+    .mistakes-list {
+      text-align: left;
+      margin: 20px auto;
+      padding: 15px;
+      background: #fef9e7;
+      border-radius: 8px;
+      max-width: 600px;
+    }
+    .mistakes-list li {
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Home Page -->
+    <div id="home" class="page active">
+      <h1>📚 Math Vocabulary System</h1>
+      <p>Choose your mode:</p>
+      <button onclick="startMode('learn')">📖 Learning Mode</button>
+      <button onclick="startMode('quiz')">❓ Quiz Mode</button>
+    </div>
+
+    <!-- Learning Mode -->
+    <div id="learning" class="page">
+      <h2>Learning Mode</h2>
+      <div id="learnProgress"></div>
+      <div class="flashcard" id="learnCard" onclick="flipCard()"></div>
+      <div>
+        <button onclick="prevCard()">◀ Previous</button>
+        <button onclick="nextCard()">Next ▶</button>
+      </div>
+    </div>
+
+    <!-- Quiz Mode -->
+    <div id="quiz" class="page">
+      <h2>Quiz Mode</h2>
+      <div id="quizProgress"></div>
+      <div class="flashcard" id="quizTerm"></div>
+      <div class="options" id="quizOptions"></div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="page">
+      <h2>🎉 Quiz Completed!</h2>
+      <p>Your score: <strong id="scoreDisplay"></strong></p>
+      <div id="mistakesSection" style="display:none;">
+        <h3>You got these wrong:</h3>
+        <ul class="mistakes-list" id="mistakesList"></ul>
+      </div>
+      <button onclick="goHome()">🏠 Back to Home</button>
+    </div>
+  </div>
+
+  <script>
+    // === DATA ===
+    const rawData = `
+📘 0. Symbols (常见符号)
+=	equals	等于
+≈	approximately equal	约等于
+>	greater than	大于
+<	less than	小于
+≥	greater than or equal to	大于等于
+≤	less than or equal to	小于等于
+±	plus or minus	正负
+∑	summation	求和
+√	square root	平方根
+x	x	x
+∈	belongs to	属于
+∉	does not belong to	不属于
+∀	for all	对所有
+∃	there exists	存在
+→	implies / tends to	蕴含 / 趋向
+∞	infinity	无穷大
+
+📘 1. General Vocabulary (基础词汇)
+number	数
+integer	整数
+rational number	有理数
+irrational number	无理数
+real number	实数
+complex number	复数
+prime number	质数
+composite number	合数
+factor / divisor	因数 / 除数
+multiple	倍数
+greatest common factor (GCF)	最大公因数
+least common multiple (LCM)	最小公倍数
+even number	偶数
+odd number	奇数
+sequence	数列
+term	项
+variable	变量
+constant	常数
+coefficient	系数
+expression	表达式
+equation	方程
+formula	公式
+identity	恒等式
+ratio	比
+proportion	比例
+percentage	百分比
+
+📘 2. Algebra (代数)
+simplify	化简
+expand	展开
+factorise	因式分解
+polynomial	多项式
+quadratic	二次的
+quadratic equation	二次方程
+root / solution	根 / 解
+discriminant	判别式
+linear equation	一次方程
+simultaneous equations	联立方程
+inequality	不等式
+absolute value equation	绝对值方程
+substitution	代入
+elimination method	消元法
+rearrange	重排
+solve	解
+
+📘 3. Functions (函数)
+function	函数
+mapping	映射
+domain	定义域
+range	值域
+inverse function	反函数
+composite function	复合函数
+one-to-one (injective)	单射
+onto (surjective)	满射
+even function	偶函数
+odd function	奇函数
+piecewise function	分段函数
+
+📘 4. Coordinate Geometry (坐标几何)
+coordinate	坐标
+Cartesian plane	笛卡尔平面
+x-axis / y-axis	x轴 / y轴
+origin	原点
+gradient (slope)	斜率
+y-intercept	y截距
+x-intercept	x截距
+straight line	直线
+curve	曲线
+tangent	切线
+normal	法线
+distance formula	距离公式
+midpoint	中点
+
+📘 5. Trigonometry (三角学)
+angle	角
+degree (°)	度
+radian	弧度
+sine (sin)	正弦
+cosine (cos)	余弦
+tangent (tan)	正切
+opposite	对边
+adjacent	临边
+hypotenuse	斜边
+Pythagorean theorem	勾股定理
+trigonometric identity	三角恒等式
+sine rule	正弦定理
+cosine rule	余弦定理
+
+📘 6. Calculus (微积分)
+Differentiation (微分)
+derivative	导数
+differentiate	求导
+gradient function	变化率函数
+rate of change	变化率
+maximum / minimum	最大值 / 最小值
+stationary point	驻点
+increasing / decreasing	增函数 / 减函数
+Integration (积分)
+integral	积分
+integrate	积分
+definite integral	定积分
+indefinite integral	不定积分
+area under a curve	曲线下面积
+limits of integration	积分上下限
+constant of integration	常数项
+
+📘 7. Sequences & Series (数列与级数)
+sequence	数列
+series	级数
+arithmetic sequence	等差数列
+geometric sequence	等比数列
+common difference	公差
+common ratio	公比
+nth term	第 n 项
+sum of n terms	前 n 项和
+converge / diverge	收敛 / 发散
+
+📘 8. Vectors & Matrices (向量与矩阵)
+vector	向量
+magnitude	长度
+direction	方向
+unit vector	单位向量
+scalar	标量
+dot product	点积
+matrix	矩阵
+determinant	行列式
+inverse matrix	逆矩阵
+identity matrix	单位矩阵
+
+📘 9. Probability & Statistics (概率与统计)
+Probability (概率)
+experiment	试验
+outcome	结果
+sample space	样本空间
+event	事件
+probability	概率
+mutually exclusive	互斥
+independent events	独立事件
+conditional probability	条件概率
+Statistics (统计)
+data	数据
+dataset	数据集
+mean	平均数
+median	中位数
+mode	众数
+range	极差
+variance	方差
+standard deviation	标准差
+histogram	直方图
+frequency table	频率表
+scatter graph	散点图
+correlation	相关性
+
+📘 10. Proof & Logic Language (证明与逻辑词)
+assume	假设
+suppose	设
+let … be …	令…为…
+given that	已知…
+therefore / thus	因此
+implies	意味着
+prove	证明
+conclude	得出结论
+contradiction	反证法
+necessary condition	必要条件
+sufficient condition	充分条件
+
+📘 11. Exam Command Words (考试指令词)
+calculate	计算
+find	求
+determine	确定
+show that	证明 / 显示
+evaluate	求值
+explain	解释
+state	陈述
+justify	证明理由
+sketch	画出（近似图）
+solve	解
+
+📘 12. Useful Phrases in Solutions (解题常用短语)
+with respect to	关于
+substitute into	代入
+expand the brackets	展开括号
+collect like terms	合并同类项
+simplify	化简
+rearrange the equation	重排方程
+isolate the variable	使变量独立
+differentiate both sides	两边求导
+integrate with respect to x	对 x 积分
+    `.trim();
+
+    // Parse data
+    let allTerms = [];
+    const lines = rawData.split('\n');
+    let currentSection = '';
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      if (line.startsWith('📘')) {
+        currentSection = line;
+        continue;
+      }
+      if (line.includes(' (') && !line.includes('\t')) {
+        // Subsection like "Differentiation (微分)" – skip
+        continue;
+      }
+      const parts = line.split('\t').filter(p => p.trim() !== '');
+      if (parts.length >= 2) {
+        // Handle symbol "x" case: English is "x", Chinese is "x"
+        let en = parts[0].trim();
+        let zh = parts.length > 2 ? parts[2].trim() : parts[1].trim();
+        if (en === 'x' && zh === 'x') {
+          en = 'x'; zh = 'x';
+        }
+        allTerms.push({ en, zh });
+      }
+    }
+
+    console.log("Total terms loaded:", allTerms.length);
+
+    // === GLOBAL STATE ===
+    let mode = '';
+    let currentIndex = 0;
+    let studied = new Set(); // for learning completion
+    let quizTerms = [];
+    let quizIndex = 0;
+    let mistakes = [];
+    let correctCount = 0;
+
+    // === DOM ELEMENTS ===
+    const homePage = document.getElementById('home');
+    const learnPage = document.getElementById('learning');
+    const quizPage = document.getElementById('quiz');
+    const resultsPage = document.getElementById('results');
+    const learnCard = document.getElementById('learnCard');
+    const learnProgress = document.getElementById('learnProgress');
+    const quizTermEl = document.getElementById('quizTerm');
+    const quizOptionsEl = document.getElementById('quizOptions');
+    const quizProgress = document.getElementById('quizProgress');
+
+    // === FUNCTIONS ===
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function goHome() {
+      showPage('home');
+    }
+
+    function startMode(m) {
+      mode = m;
+      if (m === 'learn') {
+        studied.clear();
+        currentIndex = 0;
+        updateLearnCard();
+        showPage('learning');
+      } else if (m === 'quiz') {
+        // Select 30 random unique terms
+        const shuffled = [...allTerms].sort(() => 0.5 - Math.random());
+        quizTerms = shuffled.slice(0, Math.min(30, allTerms.length));
+        quizIndex = 0;
+        mistakes = [];
+        correctCount = 0;
+        nextQuizQuestion();
+        showPage('quiz');
+      }
+    }
+
+    // === LEARNING MODE ===
+    function updateLearnCard() {
+      const term = allTerms[currentIndex];
+      learnCard.textContent = term.en;
+      learnCard.dataset.flipped = 'false';
+      learnProgress.textContent = `Term ${currentIndex + 1} of ${allTerms.length}`;
+    }
+
+    function flipCard() {
+      const term = allTerms[currentIndex];
+      if (learnCard.dataset.flipped === 'false') {
+        learnCard.textContent = term.zh;
+        learnCard.dataset.flipped = 'true';
+        studied.add(currentIndex);
+      } else {
+        learnCard.textContent = term.en;
+        learnCard.dataset.flipped = 'false';
+      }
+    }
+
+    function prevCard() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        updateLearnCard();
+      }
+    }
+
+    function nextCard() {
+      if (currentIndex < allTerms.length - 1) {
+        currentIndex++;
+        updateLearnCard();
+      } else {
+        // Check if all studied
+        if (studied.size === allTerms.length) {
+          alert('🎉 You have completed studying all terms!');
+          goHome();
+        } else {
+          alert('Please study all terms before finishing.');
+        }
+      }
+    }
+
+    // === QUIZ MODE ===
+    function nextQuizQuestion() {
+      if (quizIndex >= quizTerms.length) {
+        showResults();
+        return;
+      }
+
+      const current = quizTerms[quizIndex];
+      quizTermEl.textContent = current.en;
+      quizProgress.textContent = `Question ${quizIndex + 1} of ${quizTerms.length}`;
+
+      // Get 2 wrong answers (distinct from correct and each other)
+      let wrongPool = allTerms.filter(t => t.zh !== current.zh);
+      const wrong1 = wrongPool[Math.floor(Math.random() * wrongPool.length)];
+      wrongPool = wrongPool.filter(t => t.zh !== wrong1.zh);
+      const wrong2 = wrongPool[Math.floor(Math.random() * wrongPool.length)];
+
+      const options = [current.zh, wrong1.zh, wrong2.zh].sort(() => 0.5 - Math.random());
+
+      quizOptionsEl.innerHTML = '';
+      options.forEach(opt => {
+        const div = document.createElement('div');
+        div.className = 'option';
+        div.textContent = opt;
+        div.onclick = () => selectOption(opt, current.zh);
+        quizOptionsEl.appendChild(div);
+      });
+    }
+
+    function selectOption(selected, correct) {
+      const options = document.querySelectorAll('.option');
+      let correctChosen = false;
+
+      options.forEach(opt => {
+        if (opt.textContent === correct) {
+          opt.classList.add('correct');
+          if (selected === correct) {
+            correctChosen = true;
+            correctCount++;
+          }
+        } else if (opt.textContent === selected) {
+          opt.classList.add('wrong');
+        }
+      });
+
+      if (correctChosen) {
+        setTimeout(() => {
+          quizIndex++;
+          nextQuizQuestion();
+        }, 800);
+      } else {
+        // Record mistake (only once per term)
+        if (!mistakes.some(m => m.en === quizTerms[quizIndex].en)) {
+          mistakes.push(quizTerms[quizIndex]);
+        }
+      }
+    }
+
+    function showResults() {
+      const total = quizTerms.length;
+      const accuracy = ((correctCount / total) * 100).toFixed(1);
+      document.getElementById('scoreDisplay').textContent = `${correctCount}/${total} (${accuracy}%)`;
+
+      const mistakesList = document.getElementById('mistakesList');
+      mistakesList.innerHTML = '';
+      if (mistakes.length > 0) {
+        document.getElementById('mistakesSection').style.display = 'block';
+        mistakes.forEach(m => {
+          const li = document.createElement('li');
+          li.innerHTML = `<strong>${m.en}</strong> → ${m.zh}`;
+          mistakesList.appendChild(li);
+        });
+      } else {
+        document.getElementById('mistakesSection').style.display = 'none';
+      }
+
+      showPage('results');
+    }
+  </script>
+</body>
+</html>
