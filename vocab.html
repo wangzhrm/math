@@ -21,11 +21,7 @@
       --radius: 16px;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -36,38 +32,20 @@
       min-height: 100vh;
     }
 
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
-    }
-
+    .container { max-width: 500px; margin: 0 auto; }
     .hidden { display: none !important; }
 
-    h1, h2, h3 {
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: var(--primary-dark);
-    }
-
-    h2 {
-      text-align: center;
-      font-size: 1.8rem;
-    }
+    h1, h2, h3 { font-weight: 600; margin-bottom: 16px; color: var(--primary-dark); }
+    h2 { text-align: center; font-size: 1.8rem; }
 
     input, button {
       font-family: inherit;
       padding: 14px;
       border-radius: var(--radius);
       border: 1px solid #ddd;
-      font-size: 16px; /* Prevents iOS zoom */
+      font-size: 16px;
       width: 100%;
       margin-bottom: 12px;
-    }
-
-    input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
     }
 
     button {
@@ -80,68 +58,13 @@
       min-height: 48px;
     }
 
-    button:hover:not(:disabled) {
-      background-color: var(--primary-dark);
-      transform: translateY(-2px);
-    }
+    button:hover:not(:disabled) { background-color: var(--primary-dark); transform: translateY(-2px); }
+    .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
 
-    button:active {
-      transform: translateY(0);
-    }
+    .screen { animation: fadeIn 0.3s ease; padding: 24px 0; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .btn-outline {
-      background: transparent;
-      border: 2px solid var(--primary);
-      color: var(--primary);
-    }
-
-    .btn-danger {
-      background: var(--danger);
-    }
-
-    .screen {
-      animation: fadeIn 0.3s ease;
-      padding: 24px 0;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Lists */
-    .list-container {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin: 20px 0;
-    }
-
-    .list-btn {
-      background: white;
-      color: var(--primary);
-      border: 2px solid var(--primary);
-      text-align: left;
-      padding: 16px 20px;
-      font-weight: 600;
-      border-radius: var(--radius);
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .list-btn:hover {
-      background: #f0f4ff;
-    }
-
-    .list-btn::after {
-      content: "→";
-      font-weight: bold;
-    }
-
-    /* Flashcard */
+    /* Flashcard Logic */
     .flashcard-container {
       perspective: 1000px;
       margin: 30px 0;
@@ -161,9 +84,7 @@
       box-shadow: var(--shadow);
     }
 
-    .card.flipped {
-      transform: rotateY(180deg);
-    }
+    .card.flipped { transform: rotateY(180deg); }
 
     .card-face {
       position: absolute;
@@ -173,114 +94,62 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 30px; /* Increased padding to keep text away from edges */
       text-align: center;
       border-radius: var(--radius);
-      overflow-wrap: break-word;
+      overflow: hidden; /* Ensures no overflow */
       font-size: 1.8rem;
       font-weight: 600;
+      word-break: break-word; /* Wrap long words */
     }
 
-    .card-front {
-      background: var(--primary);
-      color: white;
+    /* Smaller font for long vocabularies */
+    .card-face.long-text {
+      font-size: 1.2rem;
+      line-height: 1.3;
     }
 
-    .card-back {
-      background: var(--card-bg);
-      color: var(--dark);
-      transform: rotateY(180deg);
-    }
+    .card-front { background: var(--primary); color: white; }
+    .card-back { background: var(--card-bg); color: var(--dark); transform: rotateY(180deg); }
 
-    /* Improved Remove Button */
+    /* Reduced Size Remove Button */
     .remove-btn {
       position: absolute;
-      top: 12px;
-      right: 12px;
-      background: var(--danger);
+      top: 8px;
+      right: 8px;
+      background: rgba(230, 57, 70, 0.9);
       color: white;
       border: none;
-      border-radius: 12px;
-      padding: 6px 12px;
-      font-size: 0.85rem;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 0.7rem; /* Significantly smaller */
+      width: auto;
+      min-height: unset;
+      margin-bottom: 0;
       cursor: pointer;
       z-index: 10;
-      font-weight: 600;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      transition: background 0.2s, transform 0.15s;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    .remove-btn:hover {
-      background: #c12a39;
-      transform: scale(1.05);
-    }
+    .remove-btn:hover { background: var(--danger); transform: scale(1.05); }
 
-    .nav-buttons {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      margin-top: 24px;
-    }
+    .nav-buttons { display: flex; justify-content: center; gap: 16px; margin-top: 24px; }
+    .nav-buttons button { flex: 1; max-width: 140px; }
 
-    .nav-buttons button {
-      flex: 1;
-      max-width: 140px;
+    /* Quiz and List Items */
+    .list-btn {
+      background: white; color: var(--primary); border: 2px solid var(--primary);
+      text-align: left; padding: 16px 20px; font-weight: 600; border-radius: var(--radius);
+      display: flex; justify-content: space-between; align-items: center;
     }
-
-    /* Quiz */
-    #quiz-options {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin: 24px 0;
-    }
-
-    #quiz-options button {
-      background: white;
-      color: var(--dark);
-      border: 2px solid #e0e0e0;
-      text-align: left;
-      padding: 16px;
-      font-size: 1.1rem;
-      font-weight: 500;
-    }
-
-    #quiz-options button:hover {
-      border-color: var(--primary);
-      background: #f8faff;
-    }
-
-    #quiz-options button.selected {
-      background: #eef2ff;
-      border-color: var(--primary);
-    }
-
-    /* Results */
-    #quiz-question ul {
-      margin: 16px 0;
-      padding-left: 20px;
-    }
-
-    #quiz-question li {
-      margin: 8px 0;
-      color: var(--gray);
-    }
-
-    /* Responsive */
-    @media (min-width: 600px) {
-      body {
-        padding: 32px;
-      }
-      .card-front, .card-back {
-        font-size: 2.2rem;
-      }
-    }
+    #quiz-options { display: flex; flex-direction: column; gap: 12px; margin: 24px 0; }
+    #quiz-options button { background: white; color: var(--dark); border: 2px solid #e0e0e0; text-align: left; padding: 16px; }
   </style>
 </head>
 <body>
   <div class="container">
-
-    <!-- Login Screen -->
     <div id="login-screen" class="screen">
       <h2>📘 Vocab Learner</h2>
       <input type="text" id="username" placeholder="Username" autocomplete="username" />
@@ -288,7 +157,6 @@
       <button onclick="login()">Login</button>
     </div>
 
-    <!-- Main Menu -->
     <div id="main-menu" class="screen hidden">
       <h2>Welcome, <span id="user-display"></span>!</h2>
       <div style="display:flex; flex-direction:column; gap:12px;">
@@ -298,19 +166,17 @@
       </div>
     </div>
 
-    <!-- Learn Mode -->
     <div id="learn-mode" class="screen hidden">
       <h2>Select Vocabulary List</h2>
       <div id="vocab-lists-learn" class="list-container"></div>
       <button class="btn-outline" onclick="backToMenu()">← Back</button>
     </div>
 
-    <!-- Flashcard View -->
     <div id="flashcard-view" class="screen hidden">
       <h3 id="current-list-title" style="text-align:center;"></h3>
       <div class="flashcard-container">
         <div class="card" id="flashcard" onclick="flipCard()">
-          <div class="card-face card-front" id="card-front">Loading...</div>
+          <div class="card-face card-front" id="card-front"></div>
           <div class="card-face card-back" id="card-back"></div>
           <button class="remove-btn" onclick="event.stopPropagation(); removeCurrentWord()">Remove</button>
         </div>
@@ -322,32 +188,25 @@
       <button class="btn-outline" style="margin-top:20px;" onclick="exitFlashcards()">Exit</button>
     </div>
 
-    <!-- Quiz Mode -->
     <div id="quiz-mode" class="screen hidden">
       <h2>Select Quiz List</h2>
       <div id="vocab-lists-quiz" class="list-container"></div>
       <button class="btn-outline" onclick="backToMenu()">← Back</button>
     </div>
 
-    <!-- Quiz Question -->
     <div id="quiz-question" class="screen hidden">
       <h3 id="quiz-list-title" style="text-align:center;"></h3>
-      <p style="font-size:1.3rem; margin:20px 0; text-align:center;">
-        What does "<strong id="quiz-word"></strong>" mean?
-      </p>
+      <p style="font-size:1.3rem; margin:20px 0; text-align:center;">What does "<strong id="quiz-word"></strong>" mean?</p>
       <div id="quiz-options"></div>
       <button onclick="submitQuizAnswer()">Submit Answer</button>
     </div>
-
   </div>
 
 <script>
-// === CONFIG ===
 const APP_ID = 'vALTi5ieVZvhJ44uiPMu5AFm-gzGzoHsz';
 const APP_KEY = 'IMjFEXa4Zbtspl6jRYc9eMTK';
 const SERVER_URL = 'https://valti5ie.lc-cn-n1-shared.com';
 
-// === STATE ===
 let currentUser = null;
 let currentVocabList = null;
 let currentVocabs = [];
@@ -358,27 +217,20 @@ let correctCount = 0;
 let wrongAnswers = [];
 let selectedOptionBtn = null;
 
-// === UTILS ===
 async function leanRequest(method, path, data = null) {
   const url = `${SERVER_URL}/1.1${path}`;
-  const headers = {
-    'X-LC-Id': APP_ID,
-    'X-LC-Key': APP_KEY,
-    'Content-Type': 'application/json'
-  };
+  const headers = { 'X-LC-Id': APP_ID, 'X-LC-Key': APP_KEY, 'Content-Type': 'application/json' };
   const config = { method, headers };
   if (data) config.body = JSON.stringify(data);
   const res = await fetch(url, config);
   return res.json();
 }
 
-// === UI HELPERS ===
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
 }
 
-// === LOGIN ===
 async function login() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
@@ -388,54 +240,29 @@ async function login() {
     document.getElementById('user-display').textContent = username;
     showScreen('main-menu');
     loadVocabLists();
-  } else {
-    alert('Invalid credentials');
-  }
+  } else { alert('Invalid credentials'); }
 }
 
-function logout() {
-  currentUser = null;
-  showScreen('login-screen');
-  document.getElementById('username').value = '';
-  document.getElementById('password').value = '';
-}
+function logout() { currentUser = null; showScreen('login-screen'); }
 
-// === MODE NAVIGATION ===
 function showMode(mode) {
-  if (mode === 'learn') {
-    renderVocabLists('learn');
-    showScreen('learn-mode');
-  } else if (mode === 'quiz') {
-    renderVocabLists('quiz');
-    showScreen('quiz-mode');
-  }
+  if (mode === 'learn') { renderVocabLists('learn'); showScreen('learn-mode'); } 
+  else if (mode === 'quiz') { renderVocabLists('quiz'); showScreen('quiz-mode'); }
 }
 
-function backToMenu() {
-  showScreen('main-menu');
-}
+function backToMenu() { showScreen('main-menu'); }
 
-// === VOCAB LISTS ===
 async function loadVocabLists() {
   const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
   let sharedLists = [];
-  if (progressRes.results.length > 0) {
-    const sharedRes = await leanRequest('GET', '/classes/VocabList');
-    sharedLists = sharedRes.results
-      .filter(list => list.sharedWith?.includes(currentUser))
-      .map(l => l.listName);
-  }
-  if (progressRes.results[0]?.removedWords?.length > 0) {
-    sharedLists.push('Removed Words');
-  }
+  const sharedRes = await leanRequest('GET', '/classes/VocabList');
+  sharedLists = sharedRes.results.filter(list => list.sharedWith?.includes(currentUser)).map(l => l.listName);
+  if (progressRes.results[0]?.removedWords?.length > 0) { sharedLists.push('Removed Words'); }
   window.vocabLists = [...new Set(sharedLists)];
 }
 
 function renderVocabLists(mode) {
-  const container = mode === 'learn' ? 
-    document.getElementById('vocab-lists-learn') : 
-    document.getElementById('vocab-lists-quiz');
-
+  const container = mode === 'learn' ? document.getElementById('vocab-lists-learn') : document.getElementById('vocab-lists-quiz');
   container.innerHTML = '';
   window.vocabLists.forEach(name => {
     const btn = document.createElement('button');
@@ -444,7 +271,6 @@ function renderVocabLists(mode) {
     btn.onclick = () => startMode(mode, name);
     container.appendChild(btn);
   });
-
   if (mode === 'quiz') {
     const errorBtn = document.createElement('button');
     errorBtn.className = 'list-btn';
@@ -454,16 +280,12 @@ function renderVocabLists(mode) {
   }
 }
 
-// === LEARNING MODE ===
 async function startMode(mode, listName) {
   if (mode === 'learn') {
     if (listName === 'Removed Words') {
       const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
       const removedIds = progressRes.results[0]?.removedWords || [];
-      if (removedIds.length === 0) {
-        alert('No removed words!');
-        return;
-      }
+      if (removedIds.length === 0) { alert('No removed words!'); return; }
       const idsQuery = removedIds.map(id => `"${id}"`).join(',');
       const vocabRes = await leanRequest('GET', `/classes/Vocabulary?where=${encodeURIComponent(`{"objectId":{"$in":[${idsQuery}]}}`)}`);
       currentVocabs = vocabRes.results;
@@ -473,15 +295,13 @@ async function startMode(mode, listName) {
     }
     currentVocabList = listName;
     showFlashcard(0);
-  } else if (mode.startsWith('quiz')) {
+  } else {
+    // Quiz Mode Logic
     let vocabs = [];
     if (listName === 'Error List') {
       const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
       const errorIds = progressRes.results[0]?.errorWords || [];
-      if (errorIds.length === 0) {
-        alert('No words in error list!');
-        return;
-      }
+      if (errorIds.length === 0) { alert('No words in error list!'); return; }
       const idsQuery = errorIds.map(id => `"${id}"`).join(',');
       const vocabRes = await leanRequest('GET', `/classes/Vocabulary?where=${encodeURIComponent(`{"objectId":{"$in":[${idsQuery}]}}`)}`);
       vocabs = vocabRes.results;
@@ -489,162 +309,116 @@ async function startMode(mode, listName) {
       const vocabRes = await leanRequest('GET', `/classes/Vocabulary?where=${encodeURIComponent(JSON.stringify({listName}))}`);
       vocabs = vocabRes.results;
     }
-    if (vocabs.length === 0) {
-      alert('No words in this list!');
-      return;
-    }
     quizQuestions = [...vocabs].sort(() => 0.5 - Math.random());
-    quizIndex = 0;
-    correctCount = 0;
-    wrongAnswers = [];
+    quizIndex = 0; correctCount = 0; wrongAnswers = [];
     currentVocabList = listName;
     showQuizQuestion();
   }
 }
 
 function showFlashcard(index) {
-  if (currentVocabs.length === 0) {
-    alert('No words in this list!');
-    exitFlashcards();
-    return;
-  }
+  if (currentVocabs.length === 0) { exitFlashcards(); return; }
   currentIndex = index;
   const word = currentVocabs[index];
+  
+  const frontEl = document.getElementById('card-front');
+  const backEl = document.getElementById('card-back');
+
+  // Set text
+  frontEl.textContent = word.english;
+  backEl.textContent = word.chinese;
+
+  // Font size adjustment logic: apply .long-text class if > 15 characters
+  [frontEl, backEl].forEach(el => {
+    if (el.textContent.length > 15) {
+      el.classList.add('long-text');
+    } else {
+      el.classList.remove('long-text');
+    }
+  });
+
   document.getElementById('current-list-title').textContent = currentVocabList;
-  document.getElementById('card-front').textContent = word.english;
-  document.getElementById('card-back').textContent = word.chinese;
   document.querySelector('#flashcard').classList.remove('flipped');
   showScreen('flashcard-view');
 }
 
-function flipCard() {
-  document.querySelector('#flashcard').classList.toggle('flipped');
-}
-
-function nextCard() {
-  if (currentIndex < currentVocabs.length - 1) {
-    showFlashcard(currentIndex + 1);
-  }
-}
-
-function prevCard() {
-  if (currentIndex > 0) {
-    showFlashcard(currentIndex - 1);
-  }
-}
-
-function exitFlashcards() {
-  showScreen('learn-mode');
-}
+function flipCard() { document.querySelector('#flashcard').classList.toggle('flipped'); }
+function nextCard() { if (currentIndex < currentVocabs.length - 1) showFlashcard(currentIndex + 1); }
+function prevCard() { if (currentIndex > 0) showFlashcard(currentIndex - 1); }
+function exitFlashcards() { showScreen('learn-mode'); }
 
 async function removeCurrentWord() {
-  if (!confirm('Remove this word from your list?')) return;
+  if (!confirm('Remove this word?')) return;
   const vocabId = currentVocabs[currentIndex].objectId;
-
   const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
   let progressObj = progressRes.results[0];
   let removed = progressObj?.removedWords || [];
   if (!removed.includes(vocabId)) {
     removed.push(vocabId);
-    if (progressObj) {
-      await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { removedWords: removed });
-    } else {
-      await leanRequest('POST', '/classes/StudentProgress', { studentUsername: currentUser, removedWords: removed, errorWords: [] });
-    }
+    if (progressObj) await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { removedWords: removed });
+    else await leanRequest('POST', '/classes/StudentProgress', { studentUsername: currentUser, removedWords: removed, errorWords: [] });
   }
-  // Reload current list
   startMode('learn', currentVocabList);
 }
 
-// === QUIZ MODE ===
 function showQuizQuestion() {
-  if (quizIndex >= quizQuestions.length) {
-    showQuizResults();
-    return;
-  }
-
+  if (quizIndex >= quizQuestions.length) { showQuizResults(); return; }
   const current = quizQuestions[quizIndex];
   document.getElementById('quiz-word').textContent = current.english;
-  document.getElementById('quiz-list-title').textContent = currentVocabList;
-
   const others = quizQuestions.filter(q => q.objectId !== current.objectId).sort(() => 0.5 - Math.random()).slice(0, 2);
   const options = [current.chinese, ...others.map(o => o.chinese)].sort(() => 0.5 - Math.random());
-
   const optionsDiv = document.getElementById('quiz-options');
   optionsDiv.innerHTML = '';
   options.forEach(opt => {
     const btn = document.createElement('button');
     btn.textContent = opt;
-    btn.onclick = () => selectQuizOption(btn, opt, current.chinese);
+    btn.onclick = () => {
+      document.querySelectorAll('#quiz-options button').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedOptionBtn = { chosen: opt, correct: current.chinese };
+    };
     optionsDiv.appendChild(btn);
   });
-
   showScreen('quiz-question');
 }
 
-function selectQuizOption(btn, option, correct) {
-  // Clear previous selection
-  document.querySelectorAll('#quiz-options button').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  selectedOptionBtn = { btn, chosen: option, correct };
-}
-
 async function submitQuizAnswer() {
-  if (!selectedOptionBtn) {
-    alert('Please select an answer');
-    return;
-  }
-
+  if (!selectedOptionBtn) { alert('Select an answer'); return; }
   const { chosen, correct } = selectedOptionBtn;
-  const isCorrect = chosen === correct;
-  if (isCorrect) {
+  if (chosen === correct) {
     correctCount++;
     if (currentVocabList === 'Error List') {
       const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
       let progressObj = progressRes.results[0];
       if (progressObj) {
-        let errors = progressObj.errorWords || [];
-        const vocabId = quizQuestions[quizIndex].objectId;
-        errors = errors.filter(id => id !== vocabId);
+        let errors = (progressObj.errorWords || []).filter(id => id !== quizQuestions[quizIndex].objectId);
         await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { errorWords: errors });
       }
     }
   } else {
     wrongAnswers.push(quizQuestions[quizIndex]);
-    if (currentVocabList !== 'Error List') {
-      const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
-      let progressObj = progressRes.results[0];
-      let errors = progressObj?.errorWords || [];
-      const vocabId = quizQuestions[quizIndex].objectId;
-      if (!errors.includes(vocabId)) {
-        errors.push(vocabId);
-        if (progressObj) {
-          await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { errorWords: errors });
-        } else {
-          await leanRequest('POST', '/classes/StudentProgress', { studentUsername: currentUser, removedWords: [], errorWords: errors });
-        }
-      }
+    const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
+    let progressObj = progressRes.results[0];
+    let errors = progressObj?.errorWords || [];
+    if (!errors.includes(quizQuestions[quizIndex].objectId)) {
+      errors.push(quizQuestions[quizIndex].objectId);
+      if (progressObj) await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { errorWords: errors });
+      else await leanRequest('POST', '/classes/StudentProgress', { studentUsername: currentUser, removedWords: [], errorWords: errors });
     }
   }
-
-  quizIndex++;
-  selectedOptionBtn = null;
-  showQuizQuestion();
+  quizIndex++; selectedOptionBtn = null; showQuizQuestion();
 }
 
 function showQuizResults() {
   const rate = ((correctCount / quizQuestions.length) * 100).toFixed(1);
-  let resultHTML = `<h2 style="text-align:center;">Quiz Complete! 🎉</h2>`;
-  resultHTML += `<p style="text-align:center;font-size:1.2rem;margin:20px 0;">Score: <strong>${rate}%</strong> (${correctCount}/${quizQuestions.length})</p>`;
-
+  let html = `<h2>Quiz Complete! 🎉</h2><p style="text-align:center;">Score: ${rate}%</p>`;
   if (wrongAnswers.length > 0) {
-    resultHTML += '<h3 style="text-align:center;margin:24px 0 12px;">Words you missed:</h3><ul>';
-    wrongAnswers.forEach(w => resultHTML += `<li>${w.english} — ${w.chinese}</li>`);
-    resultHTML += '</ul>';
+    html += '<h3 style="margin-top:20px;">Missed:</h3><ul>';
+    wrongAnswers.forEach(w => html += `<li>${w.english} — ${w.chinese}</li>`);
+    html += '</ul>';
   }
-  resultHTML += '<div style="text-align:center;"><button onclick="backToMenu()" style="margin-top:20px;">Back to Menu</button></div>';
-
-  document.getElementById('quiz-question').innerHTML = resultHTML;
+  html += '<button onclick="backToMenu()" style="margin-top:20px;">Finish</button>';
+  document.getElementById('quiz-question').innerHTML = html;
 }
 </script>
 </body>
