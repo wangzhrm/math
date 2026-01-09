@@ -3,503 +3,250 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vocab Admin Panel</title>
+  <title>Vocab Admin - Sortable Pool</title>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    :root {
-      --primary: #4361ee;
-      --primary-dark: #3a56d4;
-      --secondary: #7209b7;
-      --success: #2a9d8f;
-      --light: #f8f9fa;
-      --dark: #212529;
-      --gray: #6c757d;
-      --light-gray: #e9ecef;
-      --border: #dee2e6;
-      --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      --radius: 8px;
-      --danger: #e63946;
-      --warning: #ff9e00;
+    :root { 
+      --primary: #4361ee; --secondary: #7209b7; --success: #2a9d8f; --danger: #e63946; 
+      --group-color: #9d4edd; --border: #dee2e6; --radius: 12px; 
     }
+    body { font-family: 'Inter', sans-serif; background: #f8f9fa; padding: 20px; color: #333; }
+    .card { background: white; border-radius: var(--radius); box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; }
+    h2 { font-size: 1.2rem; margin-bottom: 15px; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 10px; }
     
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f7fb;
-      color: var(--dark);
-      line-height: 1.6;
-      padding: 15px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    .container {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-    
-    header {
-      text-align: center;
-      padding: 20px 0;
-      margin-bottom: 10px;
-    }
-    
-    h1 {
-      font-size: 2.2rem;
-      color: var(--primary);
-      margin-bottom: 8px;
-    }
-    
-    h2 {
-      font-size: 1.8rem;
-      color: var(--secondary);
-      margin: 20px 0 15px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid var(--light-gray);
-    }
-    
-    .card {
-      background: white;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 20px;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    
-    .section-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
-      color: var(--primary);
-    }
-    
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 15px;
-    }
-    
-    label {
-      font-weight: 600;
-      color: var(--gray);
-    }
-    
-    input[type="text"], 
-    input[type="file"] {
-      padding: 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 1rem;
-      width: 100%;
-    }
-    
-    .btn {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.3s;
-    }
+    .drop-zone { min-height: 60px; background: #fdfdfd; border: 2px dashed var(--border); border-radius: 8px; padding: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .drag-over { border-color: var(--primary); background: rgba(67, 97, 238, 0.05); }
 
-    .btn:disabled {
-      background: var(--gray);
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-    
-    .btn-danger { background: var(--danger); }
-    .btn-success { background: var(--success); }
-    
-    /* Status Message */
-    #uploadStatus {
-      margin-top: 15px;
-      padding: 12px;
-      border-radius: var(--radius);
-      display: none;
-      font-weight: 600;
-      background: #f0f7ff;
-      border: 1px solid #cfe2ff;
-    }
+    .tag { padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 6px; color: white; user-select: none; transition: transform 0.1s; }
+    .tag-list { background: var(--primary); cursor: grab; border: 2px solid transparent; }
+    .tag-list:active { cursor: grabbing; transform: scale(0.95); }
+    /* Visual cue for reordering */
+    .tag-list.reorder-target { border: 2px dashed white; opacity: 0.5; }
 
-    /* Lists styling */
-    .lists-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      padding: 15px;
-      background: var(--light);
-      border-radius: var(--radius);
-      border: 2px dashed var(--border);
-    }
-    
-    .list-item-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      background: white;
-      padding: 5px 10px;
-      border-radius: 25px;
-      border: 1px solid var(--border);
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-    }
+    .tag-user { background: var(--secondary); cursor: grab; }
+    .tag-assigned { background: var(--primary); }
+    .tag-group-assigned { background: var(--group-color); }
+    .tag-member { background: #6c757d; }
 
-    .list-button {
-      background: var(--primary);
-      color: white;
-      padding: 6px 15px;
-      border-radius: 20px;
-      cursor: grab;
-      font-size: 0.9rem;
-      font-weight: 600;
-      user-select: none;
-    }
+    .remove-btn { background: rgba(0,0,0,0.2); border: none; color: white; border-radius: 50%; width: 16px; height: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px; }
+    .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+    input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; flex: 1; }
+    button { padding: 10px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; }
     
-    .delete-list-btn {
-      color: var(--danger);
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 5px;
-      font-size: 0.9rem;
-    }
-
-    /* Users styling */
-    .users-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-    }
-    
-    .user-card {
-      background: var(--light);
-      padding: 20px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-    }
-    
-    .user-name {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 15px;
-      color: var(--primary);
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 5px;
-    }
-    
-    .user-lists {
-      min-height: 80px;
-      padding: 10px;
-      background: white;
-      border-radius: var(--radius);
-      border: 2px dashed var(--border);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    
-    .assigned-list {
-      background: #4cc9f0;
-      color: white;
-      padding: 4px 10px;
-      border-radius: 15px;
-      font-size: 0.8rem;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .remove-list-btn {
-      background: rgba(0,0,0,0.1);
-      border: none;
-      color: white;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.7rem;
-    }
-
-    .drag-over-user {
-      background-color: rgba(67, 97, 238, 0.1) !important;
-      border-color: var(--primary) !important;
-    }
-    
-    .loading { text-align: center; padding: 20px; color: var(--gray); }
+    .edit-icon { cursor: pointer; color: #aaa; margin-left: 8px; font-size: 0.9rem; }
+    .legend { display: flex; gap: 15px; margin-bottom: 10px; font-size: 0.8rem; font-weight: bold; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1><i class="fas fa-book-open"></i> Vocab Admin Panel</h1>
-      <p>Manage vocabulary lists and user assignments</p>
-    </header>
 
-    <div class="card">
-      <div class="section-title">
-        <i class="fas fa-cloud-upload-alt"></i>
-        <h2>Upload New Vocabulary List</h2>
-      </div>
-      <div class="input-group">
-        <label for="excelFile">Excel File (.xlsx or .xls)</label>
-        <input type="file" id="excelFile" accept=".xlsx,.xls" />
-      </div>
-      <div class="input-group">
-        <label for="listName">List Name</label>
-        <input type="text" id="listName" placeholder="e.g., Unit 1 Basic Nouns" />
-      </div>
-      <button class="btn btn-success" id="uploadBtn" onclick="uploadVocabList()">
-        <i class="fas fa-upload"></i> Start Upload
-      </button>
-      
-      <div id="uploadStatus"></div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">
-        <i class="fas fa-th-large"></i>
-        <h2>Available Vocabulary Lists</h2>
-      </div>
-      <div id="available-lists" class="lists-container">
-        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">
-        <i class="fas fa-users"></i>
-        <h2>Users</h2>
-      </div>
-      <div id="users-list" class="users-list">
-        <div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-      </div>
-    </div>
+<div class="card">
+  <h2><i class="fas fa-tools"></i> Global Controls</h2>
+  <div class="input-group">
+    <input type="text" id="groupInput" placeholder="New Group Name">
+    <button style="background:var(--primary); color:white;" onclick="createGroup()">Create Group</button>
   </div>
+  <div class="input-group">
+    <input type="file" id="excelFile">
+    <input type="text" id="listName" placeholder="Excel List Name">
+    <button style="background:var(--success); color:white;" onclick="uploadVocabList()">Upload Excel</button>
+  </div>
+</div>
 
-  <script>
-    const APP_ID = 'vALTi5ieVZvhJ44uiPMu5AFm-gzGzoHsz';
-    const MASTER_KEY = '5rPpx9k9be8nSQZ2p7AwOzgc'; 
-    const SERVER_URL = 'https://valti5ie.lc-cn-n1-shared.com';
+<div class="grid">
+  <div class="card">
+    <h2><i class="fas fa-sort-amount-down"></i> Vocabulary Pool (Drag to reorder)</h2>
+    <div id="pool-lists" class="drop-zone" ondragover="evOver(event)" ondrop="handlePoolDrop(event)"></div>
+  </div>
+  <div class="card">
+    <h2><i class="fas fa-users"></i> Student Pool</h2>
+    <div id="pool-users" class="drop-zone"></div>
+  </div>
+</div>
 
-    let allLists = [];
-    let allUsers = [];
+<div class="legend">
+  <span style="color: var(--primary)">● Individual List</span>
+  <span style="color: var(--group-color)">● Group List (Inherited)</span>
+</div>
 
-    async function adminRequest(method, path, data = null) {
-      const url = `${SERVER_URL}/1.1${path}`;
-      const headers = {
-        'X-LC-Id': APP_ID,
-        'X-LC-Key': MASTER_KEY + ',master',
-        'Content-Type': 'application/json'
-      };
-      const config = { method, headers };
-      if (data) config.body = JSON.stringify(data);
-      const res = await fetch(url, config);
-      return res.json();
+<div class="grid" id="main-grid"></div>
+
+<script>
+const APP_ID = 'vALTi5ieVZvhJ44uiPMu5AFm-gzGzoHsz';
+const MASTER_KEY = '5rPpx9k9be8nSQZ2p7AwOzgc'; 
+const SERVER_URL = 'https://valti5ie.lc-cn-n1-shared.com';
+
+let data = { users: [], lists: [], groups: [] };
+
+async function api(method, path, body = null) {
+  const headers = { 'X-LC-Id': APP_ID, 'X-LC-Key': MASTER_KEY + ',master', 'Content-Type': 'application/json' };
+  const res = await fetch(`${SERVER_URL}/1.1${path}`, { method, headers, body: body ? JSON.stringify(body) : null });
+  return res.json();
+}
+
+async function load() {
+  const [u, l, g] = await Promise.all([
+    api('GET', '/classes/Student'),
+    api('GET', '/classes/VocabList?order=sortOrder'), // Load in correct order
+    api('GET', '/classes/Group')
+  ]);
+  data = { users: u.results || [], lists: l.results || [], groups: g.results || [] };
+  render();
+}
+
+// --- NEW: REORDER LOGIC ---
+async function handlePoolDrop(e) {
+  e.preventDefault();
+  const type = e.dataTransfer.getData("type");
+  const draggedId = e.dataTransfer.getData("id");
+  
+  if (type !== 'list') return;
+
+  // Find the element we dropped near
+  const target = e.target.closest('.tag-list');
+  if (!target || target.dataset.id === draggedId) return;
+
+  const targetId = target.dataset.id;
+  const draggedIdx = data.lists.findIndex(l => l.objectId === draggedId);
+  const targetIdx = data.lists.findIndex(l => l.objectId === targetId);
+
+  // Reorder the local array
+  const [movedItem] = data.lists.splice(draggedIdx, 1);
+  data.lists.splice(targetIdx, 0, movedItem);
+
+  // Update all sortOrders in the database
+  render(); // Instant UI update
+  for (let i = 0; i < data.lists.length; i++) {
+    await api('PUT', `/classes/VocabList/${data.lists[i].objectId}`, { sortOrder: i });
+  }
+}
+
+function render() {
+  // Pool Rendering with data-id for sorting
+  document.getElementById('pool-lists').innerHTML = data.lists.map(l => `
+    <div class="tag tag-list" 
+         data-id="${l.objectId}" 
+         draggable="true" 
+         ondragstart="evDrag(event, 'list', '${l.objectId}')">
+      <i class="fas fa-grip-vertical" style="opacity:0.5; font-size:0.7rem"></i> ${l.listName}
+    </div>`).join('');
+
+  document.getElementById('pool-users').innerHTML = data.users.map(u => `
+    <div class="tag tag-user" draggable="true" ondragstart="evDrag(event, 'user', '${u.username}')">
+      ${u.username}
+    </div>`).join('');
+
+  let html = '';
+  // Groups Rendering
+  data.groups.forEach(g => {
+    html += `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span><strong>${g.groupName}</strong> <i class="fas fa-edit edit-icon" onclick="renameGroup('${g.objectId}', '${g.groupName}')"></i></span>
+        <button onclick="delGroup('${g.objectId}')" style="color:red; background:none">×</button>
+      </div>
+      <div class="drop-zone" style="margin-top:10px" ondragover="evOver(event)" ondrop="evDrop(event, 'g-member', '${g.objectId}')">
+        ${(g.members || []).map(m => `<div class="tag tag-member">${m}<button class="remove-btn" onclick="remMember('${g.objectId}','${m}')">×</button></div>`).join('') || '<small>Drop students</small>'}
+      </div>
+      <div class="drop-zone" style="margin-top:10px; border-color:var(--group-color)" ondragover="evOver(event)" ondrop="evDrop(event, 'g-list', '${g.objectId}')">
+        ${(g.sharedLists || []).map(lId => {
+          const l = data.lists.find(x => x.objectId === lId);
+          return l ? `<div class="tag tag-group-assigned">${l.listName}<button class="remove-btn" onclick="remListGroup('${g.objectId}','${lId}')">×</button></div>` : '';
+        }).join('') || '<small>Drop group lists</small>'}
+      </div>
+    </div>`;
+  });
+
+  // Students Rendering
+  data.users.forEach(u => {
+    const individualLists = data.lists.filter(l => l.sharedWith?.includes(u.username));
+    const studentGroups = data.groups.filter(g => g.members?.includes(u.username));
+    const groupListIds = [...new Set(studentGroups.flatMap(g => g.sharedLists || []))];
+    const groupLists = data.lists.filter(l => groupListIds.includes(l.objectId));
+
+    html += `
+    <div class="card">
+      <strong>Student: ${u.username}</strong>
+      <div class="drop-zone" style="margin-top:10px" ondragover="evOver(event)" ondrop="evDrop(event, 'u-list', '${u.username}')">
+        ${individualLists.map(l => `<div class="tag tag-assigned">${l.listName}<button class="remove-btn" onclick="remListUser('${l.objectId}','${u.username}')">×</button></div>`).join('')}
+        ${groupLists.map(l => `<div class="tag tag-group-assigned">${l.listName} <i class="fas fa-lock" style="font-size:0.6rem"></i></div>`).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('main-grid').innerHTML = html;
+}
+
+// Rest of your functions (evDrag, evDrop, etc.) remain the same...
+function evDrag(e, type, id) { e.dataTransfer.setData("type", type); e.dataTransfer.setData("id", id); }
+function evOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+
+async function evDrop(e, targetType, targetId) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  const sType = e.dataTransfer.getData("type");
+  const sId = e.dataTransfer.getData("id");
+
+  if (targetType === 'g-member' && sType === 'user') {
+    const g = data.groups.find(x => x.objectId === targetId);
+    if (!g.members?.includes(sId)) await api('PUT', `/classes/Group/${targetId}`, { members: [...(g.members || []), sId] });
+  } else if (targetType === 'g-list' && sType === 'list') {
+    const g = data.groups.find(x => x.objectId === targetId);
+    if (!g.sharedLists?.includes(sId)) await api('PUT', `/classes/Group/${targetId}`, { sharedLists: [...(g.sharedLists || []), sId] });
+  } else if (targetType === 'u-list' && sType === 'list') {
+    const l = data.lists.find(x => x.objectId === sId);
+    if (!l.sharedWith?.includes(targetId)) await api('PUT', `/classes/VocabList/${sId}`, { sharedWith: [...(l.sharedWith || []), targetId] });
+  }
+  load();
+}
+
+async function renameGroup(id, oldName) {
+  const newName = prompt("New group name:", oldName);
+  if (newName && newName !== oldName) { await api('PUT', `/classes/Group/${id}`, { groupName: newName }); load(); }
+}
+
+async function remListGroup(gId, lId) {
+  const g = data.groups.find(x => x.objectId === gId);
+  await api('PUT', `/classes/Group/${gId}`, { sharedLists: (g.sharedLists || []).filter(id => id !== lId) });
+  load();
+}
+
+async function remListUser(lId, user) {
+  const l = data.lists.find(x => x.objectId === lId);
+  await api('PUT', `/classes/VocabList/${lId}`, { sharedWith: (l.sharedWith || []).filter(u => u !== user) });
+  load();
+}
+
+async function remMember(gId, user) {
+  const g = data.groups.find(x => x.objectId === gId);
+  await api('PUT', `/classes/Group/${gId}`, { members: g.members.filter(m => m !== user) });
+  load();
+}
+
+async function createGroup() {
+  const val = document.getElementById('groupInput').value;
+  if (val) { await api('POST', '/classes/Group', { groupName: val, members: [], sharedLists: [] }); load(); }
+}
+
+async function delGroup(id) { if(confirm('Delete Group?')) { await api('DELETE', `/classes/Group/${id}`); load(); } }
+
+async function uploadVocabList() {
+  const file = document.getElementById('excelFile').files[0], name = document.getElementById('listName').value;
+  if (!file || !name) return alert('Name and File required');
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+    const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: ['english', 'chinese'] });
+    // Default sortOrder to the end of the current list length
+    await api('POST', '/classes/VocabList', { listName: name, sharedWith: [], sortOrder: data.lists.length });
+    for (const row of json.filter(r => r.english && r.chinese)) {
+      await api('POST', '/classes/Vocabulary', { english: String(row.english).trim(), chinese: String(row.chinese).trim(), listName: name });
     }
+    alert('Uploaded'); load();
+  };
+  reader.readAsArrayBuffer(file);
+}
 
-    window.onload = refreshData;
-
-    async function refreshData() {
-      try {
-        const [students, lists] = await Promise.all([
-          adminRequest('GET', '/classes/Student'),
-          adminRequest('GET', '/classes/VocabList')
-        ]);
-        
-        allUsers = students.results || [];
-        allLists = lists.results || [];
-        
-        renderAvailableLists();
-        renderUsers();
-      } catch (error) {
-        console.error('Refresh error:', error);
-      }
-    }
-
-    function renderAvailableLists() {
-      const container = document.getElementById('available-lists');
-      if (allLists.length === 0) {
-        container.innerHTML = '<p>No lists available.</p>';
-        return;
-      }
-      
-      container.innerHTML = '';
-      allLists.forEach(list => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'list-item-wrapper';
-        
-        const listBtn = document.createElement('div');
-        listBtn.className = 'list-button';
-        listBtn.textContent = list.listName;
-        listBtn.draggable = true;
-        listBtn.addEventListener('dragstart', (e) => {
-          e.dataTransfer.setData('text/plain', list.objectId);
-        });
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'delete-list-btn';
-        delBtn.innerHTML = '<i class="fas fa-trash"></i>';
-        delBtn.onclick = () => deleteEntireList(list.objectId);
-        
-        wrapper.appendChild(listBtn);
-        wrapper.appendChild(delBtn);
-        container.appendChild(wrapper);
-      });
-    }
-
-    function renderUsers() {
-      const container = document.getElementById('users-list');
-      container.innerHTML = '';
-      
-      allUsers.forEach(user => {
-        const assigned = allLists.filter(l => l.sharedWith && l.sharedWith.includes(user.username));
-        
-        const card = document.createElement('div');
-        card.className = 'user-card';
-        card.innerHTML = `
-          <div class="user-name">${user.username}</div>
-          <div class="user-lists" 
-               ondragover="event.preventDefault()" 
-               ondrop="handleDrop(event, '${user.username}')"
-               ondragenter="this.classList.add('drag-over-user')"
-               ondragleave="this.classList.remove('drag-over-user')">
-            ${assigned.map(l => `
-              <div class="assigned-list">
-                ${l.listName}
-                <button class="remove-list-btn" onclick="removeListFromUser('${l.objectId}', '${user.username}')">×</button>
-              </div>
-            `).join('') || '<small style="color:#ccc">Drop lists here</small>'}
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    async function uploadVocabList() {
-      const fileInput = document.getElementById('excelFile');
-      const nameInput = document.getElementById('listName');
-      const statusDiv = document.getElementById('uploadStatus');
-      const uploadBtn = document.getElementById('uploadBtn');
-
-      const file = fileInput.files[0];
-      const listName = nameInput.value.trim();
-
-      if (!file || !listName) {
-        alert('Please select a file and enter a list name');
-        return;
-      }
-
-      // Check for duplicates
-      const exists = allLists.some(l => l.listName.toLowerCase() === listName.toLowerCase());
-      if (exists) {
-        alert(`Error: A list named "${listName}" already exists. Please choose a different name.`);
-        return;
-      }
-
-      // Start UI Feedback
-      uploadBtn.disabled = true;
-      statusDiv.style.display = 'block';
-      statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reading Excel file...';
-
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: ['english', 'chinese'] });
-          const validRows = json.filter(r => r.english && r.chinese);
-
-          if (validRows.length === 0) throw new Error("No valid data found in Excel.");
-
-          // Step 1: Create List Metadata
-          statusDiv.innerHTML = '<i class="fas fa-database"></i> Creating list entry...';
-          await adminRequest('POST', '/classes/VocabList', { listName, sharedWith: [] });
-
-          // Step 2: Upload words one by one
-          for (let i = 0; i < validRows.length; i++) {
-            const row = validRows[i];
-            statusDiv.innerHTML = `<i class="fas fa-upload"></i> Uploading: ${i + 1} / ${validRows.length} words...`;
-            await adminRequest('POST', '/classes/Vocabulary', {
-              english: String(row.english).trim(),
-              chinese: String(row.chinese).trim(),
-              listName: listName
-            });
-          }
-
-          statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Success! Refreshing...';
-          fileInput.value = '';
-          nameInput.value = '';
-          await refreshData();
-          setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
-
-        } catch (error) {
-          alert('Upload failed: ' + error.message);
-          statusDiv.style.display = 'none';
-        } finally {
-          uploadBtn.disabled = false;
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    async function handleDrop(e, username) {
-      e.preventDefault();
-      e.currentTarget.classList.remove('drag-over-user');
-      const listId = e.dataTransfer.getData('text/plain');
-      const list = allLists.find(l => l.objectId === listId);
-      
-      if (!list || (list.sharedWith && list.sharedWith.includes(username))) return;
-
-      const updatedShared = [...(list.sharedWith || []), username];
-      await adminRequest('PUT', `/classes/VocabList/${listId}`, { sharedWith: updatedShared });
-      
-      // Ensure StudentProgress entry exists
-      const prog = await adminRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: username}))}`);
-      if (prog.results.length === 0) {
-        await adminRequest('POST', '/classes/StudentProgress', { studentUsername: username, removedWords: [], errorWords: [] });
-      }
-
-      await refreshData();
-    }
-
-    async function removeListFromUser(listId, username) {
-      const list = allLists.find(l => l.objectId === listId);
-      const updatedShared = list.sharedWith.filter(u => u !== username);
-      await adminRequest('PUT', `/classes/VocabList/${listId}`, { sharedWith: updatedShared });
-      await refreshData();
-    }
-
-    async function deleteEntireList(listId) {
-      if (!confirm('Delete this entire list? This removes it from ALL users.')) return;
-      const list = allLists.find(l => l.objectId === listId);
-      
-      // Delete vocab items
-      const vocabs = await adminRequest('GET', `/classes/Vocabulary?where=${encodeURIComponent(JSON.stringify({listName: list.listName}))}`);
-      for (const v of vocabs.results) {
-        await adminRequest('DELETE', `/classes/Vocabulary/${v.objectId}`);
-      }
-      
-      await adminRequest('DELETE', `/classes/VocabList/${listId}`);
-      await refreshData();
-    }
-  </script>
+window.onload = load;
+</script>
 </body>
 </html>
