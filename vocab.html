@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
       --primary: #4361ee;
@@ -64,7 +65,7 @@
     .screen { animation: fadeIn 0.3s ease; padding: 24px 0; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Flashcard Logic */
+    /* Flashcard UI */
     .flashcard-container {
       perspective: 1000px;
       margin: 30px 0;
@@ -104,31 +105,25 @@
     }
 
     .card-face.long-text { font-size: 1.2rem; line-height: 1.3; }
-
     .card-front { background: var(--primary); color: white; }
     .card-back { background: var(--card-bg); color: var(--dark); transform: rotateY(180deg); }
 
-    .remove-btn {
+    #card-action-btn {
       position: absolute;
-      top: 8px;
-      right: 8px;
+      top: 10px;
+      right: 10px;
       background: rgba(230, 57, 70, 0.9);
       color: white;
       border: none;
       border-radius: 8px;
-      padding: 4px 8px;
-      font-size: 0.7rem;
+      padding: 6px 10px;
+      font-size: 0.75rem;
       width: auto;
       min-height: unset;
-      margin-bottom: 0;
-      cursor: pointer;
       z-index: 10;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
-
-    .remove-btn:hover { background: var(--danger); transform: scale(1.05); }
 
     .nav-buttons { display: flex; justify-content: center; gap: 16px; margin-top: 24px; }
     .nav-buttons button { flex: 1; max-width: 140px; }
@@ -140,6 +135,7 @@
     }
     #quiz-options { display: flex; flex-direction: column; gap: 12px; margin: 24px 0; }
     #quiz-options button { background: white; color: var(--dark); border: 2px solid #e0e0e0; text-align: left; padding: 16px; }
+    #quiz-options button.selected { border-color: var(--primary); background: #f0f3ff; }
     
     .progress-text { text-align: center; font-size: 0.9rem; color: var(--gray); margin-bottom: 8px; font-weight: 500; }
   </style>
@@ -175,7 +171,7 @@
         <div class="card" id="flashcard" onclick="flipCard()">
           <div class="card-face card-front" id="card-front"></div>
           <div class="card-face card-back" id="card-back"></div>
-          <button class="remove-btn" onclick="event.stopPropagation(); removeCurrentWord()">Remove</button>
+          <button id="card-action-btn" onclick="event.stopPropagation(); handleCardAction()">Remove</button>
         </div>
       </div>
       <div class="nav-buttons">
@@ -237,31 +233,44 @@ async function login() {
     currentUser = username;
     document.getElementById('user-display').textContent = username;
     showScreen('main-menu');
-    loadVocabLists();
+    await loadVocabLists();
   } else { alert('Invalid credentials'); }
 }
 
 function logout() { currentUser = null; showScreen('login-screen'); }
 
 function showMode(mode) {
-  if (mode === 'learn') { renderVocabLists('learn'); showScreen('learn-mode'); } 
-  else if (mode === 'quiz') { renderVocabLists('quiz'); showScreen('quiz-mode'); }
+  renderVocabLists(mode);
+  showScreen(mode === 'learn' ? 'learn-mode' : 'quiz-mode');
 }
 
 function backToMenu() { showScreen('main-menu'); }
 
 async function loadVocabLists() {
   const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
-  let sharedLists = [];
-  const sharedRes = await leanRequest('GET', '/classes/VocabList');
-  sharedLists = sharedRes.results.filter(list => list.sharedWith?.includes(currentUser)).map(l => l.listName);
-  if (progressRes.results[0]?.removedWords?.length > 0) { sharedLists.push('Removed Words'); }
-  window.vocabLists = [...new Set(sharedLists)];
+  const groupRes = await leanRequest('GET', `/classes/Group?where=${encodeURIComponent(JSON.stringify({members: currentUser}))}`);
+  const groupListIds = [...new Set(groupRes.results.flatMap(g => g.sharedLists || []))];
+  const allListsRes = await leanRequest('GET', '/classes/VocabList');
+  
+  let accessibleNames = [];
+  allListsRes.results.forEach(list => {
+    if (list.sharedWith?.includes(currentUser) || groupListIds.includes(list.objectId)) {
+      accessibleNames.push(list.listName);
+    }
+  });
+
+  if (progressRes.results[0]?.removedWords?.length > 0) accessibleNames.push('Removed Words');
+  window.vocabLists = [...new Set(accessibleNames)];
 }
 
 function renderVocabLists(mode) {
   const container = mode === 'learn' ? document.getElementById('vocab-lists-learn') : document.getElementById('vocab-lists-quiz');
   container.innerHTML = '';
+  
+  if (!window.vocabLists || window.vocabLists.length === 0) {
+    container.innerHTML = '<p style="text-align:center; color:gray; margin-top:20px;">No lists assigned.</p>';
+  }
+
   window.vocabLists.forEach(name => {
     const btn = document.createElement('button');
     btn.className = 'list-btn';
@@ -269,10 +278,12 @@ function renderVocabLists(mode) {
     btn.onclick = () => startMode(mode, name);
     container.appendChild(btn);
   });
+
   if (mode === 'quiz') {
     const errorBtn = document.createElement('button');
     errorBtn.className = 'list-btn';
-    errorBtn.textContent = 'Error List';
+    errorBtn.style.color = 'var(--danger)';
+    errorBtn.textContent = '🚨 Error List';
     errorBtn.onclick = () => startMode('quiz-error', 'Error List');
     container.appendChild(errorBtn);
   }
@@ -284,7 +295,6 @@ async function startMode(mode, listName) {
 
   if (mode === 'learn') {
     if (listName === 'Removed Words') {
-      if (removedIds.length === 0) { alert('No removed words!'); return; }
       const idsQuery = removedIds.map(id => `"${id}"`).join(',');
       const vocabRes = await leanRequest('GET', `/classes/Vocabulary?where=${encodeURIComponent(`{"objectId":{"$in":[${idsQuery}]}}`)}`);
       currentVocabs = vocabRes.results;
@@ -292,13 +302,15 @@ async function startMode(mode, listName) {
       const vocabRes = await leanRequest('GET', `/classes/Vocabulary?where=${encodeURIComponent(JSON.stringify({listName}))}`);
       currentVocabs = vocabRes.results.filter(v => !removedIds.includes(v.objectId));
     }
+    
+    if (currentVocabs.length === 0) return alert('List is empty!');
     currentVocabList = listName;
     showFlashcard(0);
   } else {
     let vocabs = [];
     if (listName === 'Error List') {
       const errorIds = progressRes.results[0]?.errorWords || [];
-      if (errorIds.length === 0) { alert('No words in error list!'); return; }
+      if (errorIds.length === 0) return alert('No words in error list!');
       const idsQuery = errorIds.map(id => `"${id}"`).join(',');
       const vocabRes = await leanRequest('GET', `/classes/Vocabulary?where=${encodeURIComponent(`{"objectId":{"$in":[${idsQuery}]}}`)}`);
       vocabs = vocabRes.results;
@@ -314,25 +326,21 @@ async function startMode(mode, listName) {
 }
 
 function showFlashcard(index) {
-  if (currentVocabs.length === 0) { 
-    alert('List is empty!');
-    exitFlashcards(); 
-    return; 
-  }
   currentIndex = index;
   const word = currentVocabs[index];
+  const btn = document.getElementById('card-action-btn');
   
-  const frontEl = document.getElementById('card-front');
-  const backEl = document.getElementById('card-back');
+  // Set button text based on the active list
+  if (currentVocabList === 'Removed Words') {
+    btn.textContent = 'Move Back';
+    btn.style.background = 'var(--success)';
+  } else {
+    btn.textContent = 'Remove';
+    btn.style.background = 'rgba(230, 57, 70, 0.9)';
+  }
 
-  frontEl.textContent = word.english;
-  backEl.textContent = word.chinese;
-
-  [frontEl, backEl].forEach(el => {
-    if (el.textContent.length > 15) el.classList.add('long-text');
-    else el.classList.remove('long-text');
-  });
-
+  document.getElementById('card-front').textContent = word.english;
+  document.getElementById('card-back').textContent = word.chinese;
   document.getElementById('current-list-title').textContent = currentVocabList;
   document.getElementById('learn-progress').textContent = `${currentIndex + 1} / ${currentVocabs.length}`;
   document.querySelector('#flashcard').classList.remove('flipped');
@@ -344,43 +352,48 @@ function nextCard() { if (currentIndex < currentVocabs.length - 1) showFlashcard
 function prevCard() { if (currentIndex > 0) showFlashcard(currentIndex - 1); }
 function exitFlashcards() { showScreen('learn-mode'); }
 
-async function removeCurrentWord() {
+// --- UPDATED CARD ACTION LOGIC ---
+async function handleCardAction() {
   const vocabId = currentVocabs[currentIndex].objectId;
-  const removedWord = currentVocabs.splice(currentIndex, 1)[0];
+  const isMovingBack = (currentVocabList === 'Removed Words');
+  
+  // Update local view first
+  currentVocabs.splice(currentIndex, 1);
 
-  const updateDatabase = async () => {
-    const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
-    let progressObj = progressRes.results[0];
-    let removed = progressObj?.removedWords || [];
+  // Sync with DB
+  const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
+  let progressObj = progressRes.results[0];
+  let removed = progressObj?.removedWords || [];
 
-    if (!removed.includes(vocabId)) {
-      removed.push(vocabId);
-      if (progressObj) {
-        await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { removedWords: removed });
-      } else {
-        await leanRequest('POST', '/classes/StudentProgress', { studentUsername: currentUser, removedWords: removed, errorWords: [] });
-      }
-    }
-  };
+  if (isMovingBack) {
+    // Remove from the removed list
+    removed = removed.filter(id => id !== vocabId);
+  } else {
+    // Add to the removed list
+    if (!removed.includes(vocabId)) removed.push(vocabId);
+  }
 
-  updateDatabase();
+  if (progressObj) {
+    await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { removedWords: removed });
+  } else {
+    await leanRequest('POST', '/classes/StudentProgress', { studentUsername: currentUser, removedWords: removed, errorWords: [] });
+  }
 
+  // Refresh view
   if (currentVocabs.length > 0) {
-    if (currentIndex >= currentVocabs.length) {
-      currentIndex = currentVocabs.length - 1;
-    }
+    if (currentIndex >= currentVocabs.length) currentIndex = currentVocabs.length - 1;
     showFlashcard(currentIndex);
   } else {
-    alert('All words in this list have been removed or learned!');
+    alert(isMovingBack ? 'All words moved back!' : 'List finished!');
     exitFlashcards();
-    loadVocabLists();
+    await loadVocabLists();
+    renderVocabLists('learn');
   }
 }
 
 function showQuizQuestion() {
   if (quizIndex >= quizQuestions.length) { showQuizResults(); return; }
   const current = quizQuestions[quizIndex];
-  
   document.getElementById('quiz-list-title').textContent = currentVocabList;
   document.getElementById('quiz-progress').textContent = `${quizIndex + 1} / ${quizQuestions.length}`;
   document.getElementById('quiz-word').textContent = current.english;
@@ -403,22 +416,19 @@ function showQuizQuestion() {
 }
 
 async function submitQuizAnswer() {
-  if (!selectedOptionBtn) { alert('Select an answer'); return; }
+  if (!selectedOptionBtn) return alert('Select an answer');
   const { chosen, correct } = selectedOptionBtn;
+  const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
+  let progressObj = progressRes.results[0];
+
   if (chosen === correct) {
     correctCount++;
-    if (currentVocabList === 'Error List') {
-      const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
-      let progressObj = progressRes.results[0];
-      if (progressObj) {
-        let errors = (progressObj.errorWords || []).filter(id => id !== quizQuestions[quizIndex].objectId);
-        await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { errorWords: errors });
-      }
+    if (currentVocabList === 'Error List' && progressObj) {
+      let errors = (progressObj.errorWords || []).filter(id => id !== quizQuestions[quizIndex].objectId);
+      await leanRequest('PUT', `/classes/StudentProgress/${progressObj.objectId}`, { errorWords: errors });
     }
   } else {
     wrongAnswers.push(quizQuestions[quizIndex]);
-    const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
-    let progressObj = progressRes.results[0];
     let errors = progressObj?.errorWords || [];
     if (!errors.includes(quizQuestions[quizIndex].objectId)) {
       errors.push(quizQuestions[quizIndex].objectId);
@@ -433,8 +443,8 @@ function showQuizResults() {
   const rate = ((correctCount / quizQuestions.length) * 100).toFixed(1);
   let html = `<h2>Quiz Complete! 🎉</h2><p style="text-align:center;">Score: ${rate}%</p>`;
   if (wrongAnswers.length > 0) {
-    html += '<h3 style="margin-top:20px;">Missed:</h3><ul>';
-    wrongAnswers.forEach(w => html += `<li>${w.english} — ${w.chinese}</li>`);
+    html += '<h3 style="margin-top:20px;">Review Missed Words:</h3><ul style="list-style:none; padding:10px;">';
+    wrongAnswers.forEach(w => html += `<li style="margin-bottom:8px; color:var(--danger);">❌ ${w.english} → ${w.chinese}</li>`);
     html += '</ul>';
   }
   html += '<button onclick="backToMenu()" style="margin-top:20px;">Finish</button>';
