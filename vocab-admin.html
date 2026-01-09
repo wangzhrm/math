@@ -12,7 +12,6 @@
       --group-color: #9d4edd; --border: #dee2e6; --radius: 12px; --bg: #f0f2f5;
     }
     
-    /* Login Overlay Styles */
     #password-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
       background: var(--primary); display: flex; align-items: center; 
@@ -23,9 +22,8 @@
     .login-box input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; text-align: center; font-size: 1.1rem; }
     .login-box button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; }
 
-    /* Main App Styles */
     body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
-    #main-app { display: none; } /* Hidden by default */
+    #main-app { display: none; } 
     
     .admin-container { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 20px; align-items: start; height: calc(100vh - 40px); }
     .column { background: #e9ecef; border-radius: var(--radius); padding: 15px; display: flex; flex-direction: column; height: 100%; overflow-y: auto; }
@@ -36,7 +34,7 @@
     .drag-over { border-color: var(--primary); background: rgba(67, 97, 238, 0.05); }
 
     .tag { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; color: white; user-select: none; }
-    .tag-list { background: var(--primary); cursor: grab; }
+    .tag-list { background: var(--primary); cursor: grab; position: relative; }
     .tag-user { background: var(--secondary); cursor: grab; }
     .tag-assigned { background: var(--primary); }
     .tag-group-assigned { background: var(--group-color); }
@@ -47,9 +45,7 @@
     input, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 0.85rem; }
     button { cursor: pointer; font-weight: 600; border: none; }
     
-    .edit-icon { cursor: pointer; color: #aaa; font-size: 0.8rem; margin-left: 5px; }
-    .small-label { font-size: 0.7rem; color: #777; font-weight: bold; text-transform: uppercase; margin-top: 10px; margin-bottom: 4px; display: block;}
-    
+    .status-msg { font-size: 0.75rem; margin-top: 8px; color: var(--secondary); font-weight: bold; }
     .column::-webkit-scrollbar { width: 6px; }
     .column::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
   </style>
@@ -73,10 +69,13 @@
       <div class="card">
         <div class="input-group">
           <input type="text" id="listName" placeholder="New List Name">
-          <input type="file" id="excelFile">
+          <input type="file" id="excelFile" accept=".xlsx, .xls">
           <button style="background:var(--success); color:white;" onclick="uploadVocabList()">Upload Excel</button>
         </div>
-        <button style="background:var(--warning); color:white; width: 100%; font-size: 0.7rem;" onclick="initializeSortOrders()">
+        <div id="vocab-status" class="status-msg" style="display:none;">
+          <i class="fas fa-spinner fa-spin"></i> <span id="vocab-status-text">Ready</span>
+        </div>
+        <button style="background:var(--warning); color:white; width: 100%; font-size: 0.7rem; margin-top:10px;" onclick="initializeSortOrders()">
           <i class="fas fa-magic"></i> Fix Missing Sort Orders
         </button>
       </div>
@@ -99,6 +98,20 @@
 
     <section class="column">
       <h1><i class="fas fa-user-graduate"></i> 3. Student Review</h1>
+      
+      <div class="card">
+        <span class="small-label">Bulk Upload Students (Col A: User, Col B: Pass)</span>
+        <div class="input-group">
+          <input type="file" id="studentExcelFile" accept=".xlsx, .xls">
+          <button style="background:var(--secondary); color:white;" onclick="uploadStudentList()">
+            <i class="fas fa-user-plus"></i> Upload Students
+          </button>
+        </div>
+        <div id="student-status" class="status-msg" style="display:none;">
+          <i class="fas fa-circle-notch fa-spin"></i> <span id="student-status-text">Ready</span>
+        </div>
+      </div>
+
       <div class="card">
         <span class="small-label">Student Pool (Drag to Groups)</span>
         <div id="pool-users" class="drop-zone"></div>
@@ -110,24 +123,23 @@
 </div>
 
 <script>
-// ACCESS CONTROL
-function verifyPass() {
-  const pass = document.getElementById('adminPass').value;
-  if (pass === "wang123") {
-    document.getElementById('password-overlay').style.display = 'none';
-    document.getElementById('main-app').style.display = 'block';
-    load(); // Only load data after password is correct
-  } else {
-    document.getElementById('error-msg').style.display = 'block';
-    document.getElementById('adminPass').value = '';
-  }
-}
-
 const APP_ID = 'vALTi5ieVZvhJ44uiPMu5AFm-gzGzoHsz';
 const MASTER_KEY = '5rPpx9k9be8nSQZ2p7AwOzgc'; 
 const SERVER_URL = 'https://valti5ie.lc-cn-n1-shared.com';
 
 let data = { users: [], lists: [], groups: [] };
+
+function verifyPass() {
+  const pass = document.getElementById('adminPass').value;
+  if (pass === "wang123") {
+    document.getElementById('password-overlay').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    load(); 
+  } else {
+    document.getElementById('error-msg').style.display = 'block';
+    document.getElementById('adminPass').value = '';
+  }
+}
 
 async function api(method, path, body = null) {
   const headers = { 'X-LC-Id': APP_ID, 'X-LC-Key': MASTER_KEY + ',master', 'Content-Type': 'application/json' };
@@ -145,37 +157,123 @@ async function load() {
   render();
 }
 
-async function initializeSortOrders() {
-  if(!confirm("Assign order to all lists?")) return;
-  for (let i = 0; i < data.lists.length; i++) {
-    await api('PUT', `/classes/VocabList/${data.lists[i].objectId}`, { sortOrder: i });
-  }
-  load();
+// --- VOCABULARY LOGIC ---
+async function uploadVocabList() {
+  const file = document.getElementById('excelFile').files[0];
+  const name = document.getElementById('listName').value.trim();
+  const statusDiv = document.getElementById('vocab-status');
+  const statusText = document.getElementById('vocab-status-text');
+
+  if (!file || !name) return alert('List Name and Excel File required');
+
+  const duplicate = data.lists.find(l => l.listName.toLowerCase() === name.toLowerCase());
+  if (duplicate) return alert('A list with this name already exists.');
+
+  statusDiv.style.display = 'block';
+  statusText.innerText = "Processing...";
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: ['english', 'chinese'] });
+      const validRows = json.filter(r => r.english && r.chinese);
+
+      await api('POST', '/classes/VocabList', { listName: name, sharedWith: [], sortOrder: data.lists.length });
+
+      let count = 0;
+      for (const row of validRows) {
+        statusText.innerText = `Uploading: ${count + 1}/${validRows.length}`;
+        await api('POST', '/classes/Vocabulary', { 
+          english: String(row.english).trim(), 
+          chinese: String(row.chinese).trim(), 
+          listName: name 
+        });
+        count++;
+      }
+
+      statusText.innerText = "Upload Complete!";
+      document.getElementById('listName').value = "";
+      setTimeout(() => { statusDiv.style.display = 'none'; }, 2000);
+      load();
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
-async function handlePoolDrop(e) {
-  e.preventDefault();
-  const type = e.dataTransfer.getData("type");
-  const draggedId = e.dataTransfer.getData("id");
-  if (type !== 'list') return;
-  const target = e.target.closest('.tag-list');
-  if (!target || target.dataset.id === draggedId) return;
+async function delVocabList(id, name) {
+  if (!confirm(`Are you sure you want to delete "${name}"? This will remove all words in this list.`)) return;
+  
+  const statusDiv = document.getElementById('vocab-status');
+  const statusText = document.getElementById('vocab-status-text');
+  statusDiv.style.display = 'block';
+  statusText.innerText = "Deleting list entry...";
 
-  const draggedIdx = data.lists.findIndex(l => l.objectId === draggedId);
-  const targetIdx = data.lists.findIndex(l => l.objectId === target.dataset.id);
-  const [movedItem] = data.lists.splice(draggedIdx, 1);
-  data.lists.splice(targetIdx, 0, movedItem);
+  try {
+    // 1. Delete the list metadata
+    await api('DELETE', `/classes/VocabList/${id}`);
+    
+    // 2. Fetch and delete words belonging to this list (Requires a query)
+    statusText.innerText = "Cleaning up words...";
+    const words = await api('GET', `/classes/Vocabulary?where={"listName":"${name}"}`);
+    if (words.results) {
+      for (const word of words.results) {
+        await api('DELETE', `/classes/Vocabulary/${word.objectId}`);
+      }
+    }
 
-  render(); 
-  for (let i = 0; i < data.lists.length; i++) {
-    await api('PUT', `/classes/VocabList/${data.lists[i].objectId}`, { sortOrder: i });
+    statusText.innerText = "Deleted Successfully";
+    setTimeout(() => { statusDiv.style.display = 'none'; }, 2000);
+    load();
+  } catch (err) {
+    alert("Delete failed: " + err.message);
   }
 }
 
+// --- STUDENT UPLOAD ---
+async function uploadStudentList() {
+    const file = document.getElementById('studentExcelFile').files[0];
+    const statusDiv = document.getElementById('student-status');
+    const statusText = document.getElementById('student-status-text');
+
+    if (!file) return alert('Select Excel file');
+
+    statusDiv.style.display = 'block';
+    statusText.innerText = "Uploading...";
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+            const validRows = rows.filter(row => row[0] && row[1]);
+            let count = 0;
+
+            for (const row of validRows) {
+                statusText.innerText = `Added: ${count + 1}/${validRows.length}`;
+                await api('POST', '/classes/Student', { 
+                    username: String(row[0]).trim(), 
+                    password: String(row[1]).trim() 
+                });
+                count++;
+            }
+            statusText.innerText = "Complete";
+            setTimeout(() => statusDiv.style.display = 'none', 2000);
+            load();
+        } catch (err) { alert("Error uploading"); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// --- DRAG, DROP & RENDER ---
 function render() {
+  // Pool Lists with Delete Button
   document.getElementById('pool-lists').innerHTML = data.lists.map(l => `
     <div class="tag tag-list" data-id="${l.objectId}" draggable="true" ondragstart="evDrag(event, 'list', '${l.objectId}')">
       <i class="fas fa-grip-vertical"></i> ${l.listName}
+      <button class="remove-btn" onclick="delVocabList('${l.objectId}', '${l.listName}')">×</button>
     </div>`).join('');
 
   document.getElementById('pool-users').innerHTML = data.users.map(u => `
@@ -207,7 +305,10 @@ function render() {
 
     return `
     <div class="card">
-      <strong><i class="fas fa-user"></i> ${u.username}</strong>
+      <div style="display:flex; justify-content:space-between;">
+        <strong><i class="fas fa-user"></i> ${u.username}</strong>
+        <button onclick="delStudent('${u.objectId}')" style="color:var(--danger); background:none; font-size:0.8rem;">Delete</button>
+      </div>
       <div class="drop-zone" style="margin-top:8px" ondragover="evOver(event)" ondrop="evDrop(event, 'u-list', '${u.username}')">
         ${individualLists.map(l => `<div class="tag tag-assigned">${l.listName}<button class="remove-btn" onclick="remListUser('${l.objectId}','${u.username}')">×</button></div>`).join('')}
         ${groupLists.map(l => `<div class="tag tag-group-assigned">${l.listName} <i class="fas fa-lock" style="font-size:0.6rem"></i></div>`).join('')}
@@ -216,9 +317,24 @@ function render() {
   }).join('');
 }
 
-// Drag events...
-function evDrag(e, type, id) { e.dataTransfer.setData("type", type); e.dataTransfer.setData("id", id); }
-function evOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+async function handlePoolDrop(e) {
+  e.preventDefault();
+  const type = e.dataTransfer.getData("type");
+  const draggedId = e.dataTransfer.getData("id");
+  if (type !== 'list') return;
+  const target = e.target.closest('.tag-list');
+  if (!target || target.dataset.id === draggedId) return;
+
+  const draggedIdx = data.lists.findIndex(l => l.objectId === draggedId);
+  const targetIdx = data.lists.findIndex(l => l.objectId === target.dataset.id);
+  const [movedItem] = data.lists.splice(draggedIdx, 1);
+  data.lists.splice(targetIdx, 0, movedItem);
+
+  render(); 
+  for (let i = 0; i < data.lists.length; i++) {
+    await api('PUT', `/classes/VocabList/${data.lists[i].objectId}`, { sortOrder: i });
+  }
+}
 
 async function evDrop(e, targetType, targetId) {
   e.preventDefault(); e.currentTarget.classList.remove('drag-over');
@@ -238,50 +354,40 @@ async function evDrop(e, targetType, targetId) {
   load();
 }
 
+// Helpers
+function evDrag(e, type, id) { e.dataTransfer.setData("type", type); e.dataTransfer.setData("id", id); }
+function evOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+async function delStudent(id) { if(confirm('Delete student?')) { await api('DELETE', `/classes/Student/${id}`); load(); } }
 async function renameGroup(id, oldName) {
-  const newName = prompt("New group name:", oldName);
+  const newName = prompt("New name:", oldName);
   if (newName && newName !== oldName) { await api('PUT', `/classes/Group/${id}`, { groupName: newName }); load(); }
 }
-
 async function remListGroup(gId, lId) {
   const g = data.groups.find(x => x.objectId === gId);
   await api('PUT', `/classes/Group/${gId}`, { sharedLists: (g.sharedLists || []).filter(id => id !== lId) });
   load();
 }
-
 async function remListUser(lId, user) {
   const l = data.lists.find(x => x.objectId === lId);
   await api('PUT', `/classes/VocabList/${lId}`, { sharedWith: (l.sharedWith || []).filter(u => u !== user) });
   load();
 }
-
 async function remMember(gId, user) {
   const g = data.groups.find(x => x.objectId === gId);
   await api('PUT', `/classes/Group/${gId}`, { members: g.members.filter(m => m !== user) });
   load();
 }
-
 async function createGroup() {
   const val = document.getElementById('groupInput').value;
   if (val) { await api('POST', '/classes/Group', { groupName: val, members: [], sharedLists: [] }); load(); }
 }
-
 async function delGroup(id) { if(confirm('Delete Group?')) { await api('DELETE', `/classes/Group/${id}`); load(); } }
-
-async function uploadVocabList() {
-  const file = document.getElementById('excelFile').files[0], name = document.getElementById('listName').value;
-  if (!file || !name) return alert('Name and File required');
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-    const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: ['english', 'chinese'] });
-    await api('POST', '/classes/VocabList', { listName: name, sharedWith: [], sortOrder: data.lists.length });
-    for (const row of json.filter(r => r.english && r.chinese)) {
-      await api('POST', '/classes/Vocabulary', { english: String(row.english).trim(), chinese: String(row.chinese).trim(), listName: name });
-    }
-    alert('Uploaded'); load();
-  };
-  reader.readAsArrayBuffer(file);
+async function initializeSortOrders() {
+  if(!confirm("Fix orders?")) return;
+  for (let i = 0; i < data.lists.length; i++) {
+    await api('PUT', `/classes/VocabList/${data.lists[i].objectId}`, { sortOrder: i });
+  }
+  load();
 }
 </script>
 </body>
