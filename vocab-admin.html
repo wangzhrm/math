@@ -113,7 +113,12 @@
       </div>
 
       <div class="card">
-        <span class="small-label">Student Pool (Drag to Groups)</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span class="small-label" style="margin:0;">Student Pool (Drag to Groups)</span>
+            <button onclick="resetAllLogins()" style="background:var(--danger); color:white; font-size:0.7rem; padding:4px 8px; border-radius:4px; border:none; cursor:pointer;">
+                <i class="fas fa-undo"></i> Set login times to zero
+            </button>
+        </div>
         <div id="pool-users" class="drop-zone"></div>
       </div>
       <div id="student-cards-container"></div>
@@ -127,7 +132,7 @@ const APP_ID = 'vALTi5ieVZvhJ44uiPMu5AFm-gzGzoHsz';
 const MASTER_KEY = '5rPpx9k9be8nSQZ2p7AwOzgc'; 
 const SERVER_URL = 'https://valti5ie.lc-cn-n1-shared.com';
 
-let data = { users: [], lists: [], groups: [] };
+let data = { users: [], lists: [], groups: [], loginCounts: {} };
 
 function verifyPass() {
   const pass = document.getElementById('adminPass').value;
@@ -148,13 +153,51 @@ async function api(method, path, body = null) {
 }
 
 async function load() {
-  const [u, l, g] = await Promise.all([
+  const [u, l, g, h] = await Promise.all([
     api('GET', '/classes/Student'),
     api('GET', '/classes/VocabList?order=sortOrder'),
-    api('GET', '/classes/Group')
+    api('GET', '/classes/Group'),
+    api('GET', '/classes/LoginHistory?limit=1000')
   ]);
-  data = { users: u.results || [], lists: l.results || [], groups: g.results || [] };
+
+  // Calculate login counts per student
+  const counts = {};
+  if (h.results) {
+    h.results.forEach(record => {
+      counts[record.username] = (counts[record.username] || 0) + 1;
+    });
+  }
+
+  data = { 
+    users: u.results || [], 
+    lists: l.results || [], 
+    groups: g.results || [],
+    loginCounts: counts 
+  };
   render();
+}
+
+async function resetAllLogins() {
+    if (!confirm("Are you sure you want to reset all login counts to zero? This will delete all login history records.")) return;
+    
+    const statusDiv = document.getElementById('student-status');
+    const statusText = document.getElementById('student-status-text');
+    statusDiv.style.display = 'block';
+    statusText.innerText = "Clearing history...";
+
+    try {
+        const history = await api('GET', '/classes/LoginHistory?limit=1000&keys=objectId');
+        if (history.results && history.results.length > 0) {
+            for (const item of history.results) {
+                await api('DELETE', `/classes/LoginHistory/${item.objectId}`);
+            }
+        }
+        statusText.innerText = "All counts reset to zero.";
+        setTimeout(() => statusDiv.style.display = 'none', 2000);
+        load();
+    } catch (err) {
+        alert("Reset failed: " + err.message);
+    }
 }
 
 // --- VOCABULARY LOGIC ---
@@ -212,10 +255,7 @@ async function delVocabList(id, name) {
   statusText.innerText = "Deleting list entry...";
 
   try {
-    // 1. Delete the list metadata
     await api('DELETE', `/classes/VocabList/${id}`);
-    
-    // 2. Fetch and delete words belonging to this list (Requires a query)
     statusText.innerText = "Cleaning up words...";
     const words = await api('GET', `/classes/Vocabulary?where={"listName":"${name}"}`);
     if (words.results) {
@@ -223,7 +263,6 @@ async function delVocabList(id, name) {
         await api('DELETE', `/classes/Vocabulary/${word.objectId}`);
       }
     }
-
     statusText.innerText = "Deleted Successfully";
     setTimeout(() => { statusDiv.style.display = 'none'; }, 2000);
     load();
@@ -232,7 +271,6 @@ async function delVocabList(id, name) {
   }
 }
 
-// --- STUDENT UPLOAD ---
 async function uploadStudentList() {
     const file = document.getElementById('studentExcelFile').files[0];
     const statusDiv = document.getElementById('student-status');
@@ -267,9 +305,8 @@ async function uploadStudentList() {
     reader.readAsArrayBuffer(file);
 }
 
-// --- DRAG, DROP & RENDER ---
+// --- RENDER ---
 function render() {
-  // Pool Lists with Delete Button
   document.getElementById('pool-lists').innerHTML = data.lists.map(l => `
     <div class="tag tag-list" data-id="${l.objectId}" draggable="true" ondragstart="evDrag(event, 'list', '${l.objectId}')">
       <i class="fas fa-grip-vertical"></i> ${l.listName}
@@ -283,7 +320,7 @@ function render() {
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <strong>${g.groupName} <i class="fas fa-edit edit-icon" onclick="renameGroup('${g.objectId}', '${g.groupName}')"></i></strong>
-        <button onclick="delGroup('${g.objectId}')" style="color:var(--danger); background:none; padding:0">×</button>
+        <button onclick="delGroup('${g.objectId}')" style="color:var(--danger); background:none; padding:0; cursor:pointer;">×</button>
       </div>
       <span class="small-label">Members</span>
       <div class="drop-zone" ondragover="evOver(event)" ondrop="evDrop(event, 'g-member', '${g.objectId}')">
@@ -302,12 +339,18 @@ function render() {
     const individualLists = data.lists.filter(l => l.sharedWith?.includes(u.username));
     const groupListIds = [...new Set(data.groups.filter(g => g.members?.includes(u.username)).flatMap(g => g.sharedLists || []))];
     const groupLists = data.lists.filter(l => groupListIds.includes(l.objectId));
+    const loginCount = data.loginCounts[u.username] || 0;
 
     return `
     <div class="card">
-      <div style="display:flex; justify-content:space-between;">
-        <strong><i class="fas fa-user"></i> ${u.username}</strong>
-        <button onclick="delStudent('${u.objectId}')" style="color:var(--danger); background:none; font-size:0.8rem;">Delete</button>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>
+            <i class="fas fa-user"></i> ${u.username} 
+            <span style="color:var(--primary); font-size:0.75rem; background:#eef2ff; padding:2px 6px; border-radius:4px; margin-left:8px;">
+                Logins: ${loginCount}
+            </span>
+        </strong>
+        <button onclick="delStudent('${u.objectId}')" style="color:var(--danger); background:none; font-size:0.8rem; cursor:pointer;">Delete</button>
       </div>
       <div class="drop-zone" style="margin-top:8px" ondragover="evOver(event)" ondrop="evDrop(event, 'u-list', '${u.username}')">
         ${individualLists.map(l => `<div class="tag tag-assigned">${l.listName}<button class="remove-btn" onclick="remListUser('${l.objectId}','${u.username}')">×</button></div>`).join('')}
@@ -354,7 +397,6 @@ async function evDrop(e, targetType, targetId) {
   load();
 }
 
-// Helpers
 function evDrag(e, type, id) { e.dataTransfer.setData("type", type); e.dataTransfer.setData("id", id); }
 function evOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
 async function delStudent(id) { if(confirm('Delete student?')) { await api('DELETE', `/classes/Student/${id}`); load(); } }
