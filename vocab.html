@@ -225,16 +225,41 @@ function showScreen(id) {
   document.getElementById(id).classList.remove('hidden');
 }
 
+// --- UPDATED LOGIN TO RECORD DATA ---
 async function login() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
+  
+  // Verify User
   const res = await leanRequest('GET', `/classes/Student?where=${encodeURIComponent(JSON.stringify({username, password}))}`);
+  
   if (res.results && res.results.length > 0) {
     currentUser = username;
     document.getElementById('user-display').textContent = username;
+    
+    // RECORD LOGIN IN LEANCLOUD
+    await recordLogin(username);
+    
     showScreen('main-menu');
     await loadVocabLists();
-  } else { alert('Invalid credentials'); }
+  } else { 
+    alert('Invalid credentials'); 
+  }
+}
+
+async function recordLogin(username) {
+  const loginData = {
+    username: username,
+    loginTime: { "__type": "Date", "iso": new Date().toISOString() },
+    deviceInfo: navigator.userAgent
+  };
+  
+  try {
+    await leanRequest('POST', '/classes/LoginHistory', loginData);
+    console.log('Login event saved to LeanCloud');
+  } catch (err) {
+    console.error('Error saving login event:', err);
+  }
 }
 
 function logout() { currentUser = null; showScreen('login-screen'); }
@@ -330,7 +355,6 @@ function showFlashcard(index) {
   const word = currentVocabs[index];
   const btn = document.getElementById('card-action-btn');
   
-  // Set button text based on the active list
   if (currentVocabList === 'Removed Words') {
     btn.textContent = 'Move Back';
     btn.style.background = 'var(--success)';
@@ -352,24 +376,19 @@ function nextCard() { if (currentIndex < currentVocabs.length - 1) showFlashcard
 function prevCard() { if (currentIndex > 0) showFlashcard(currentIndex - 1); }
 function exitFlashcards() { showScreen('learn-mode'); }
 
-// --- UPDATED CARD ACTION LOGIC ---
 async function handleCardAction() {
   const vocabId = currentVocabs[currentIndex].objectId;
   const isMovingBack = (currentVocabList === 'Removed Words');
   
-  // Update local view first
   currentVocabs.splice(currentIndex, 1);
 
-  // Sync with DB
   const progressRes = await leanRequest('GET', `/classes/StudentProgress?where=${encodeURIComponent(JSON.stringify({studentUsername: currentUser}))}`);
   let progressObj = progressRes.results[0];
   let removed = progressObj?.removedWords || [];
 
   if (isMovingBack) {
-    // Remove from the removed list
     removed = removed.filter(id => id !== vocabId);
   } else {
-    // Add to the removed list
     if (!removed.includes(vocabId)) removed.push(vocabId);
   }
 
@@ -379,7 +398,6 @@ async function handleCardAction() {
     await leanRequest('POST', '/classes/StudentProgress', { studentUsername: currentUser, removedWords: removed, errorWords: [] });
   }
 
-  // Refresh view
   if (currentVocabs.length > 0) {
     if (currentIndex >= currentVocabs.length) currentIndex = currentVocabs.length - 1;
     showFlashcard(currentIndex);
@@ -447,7 +465,7 @@ function showQuizResults() {
     wrongAnswers.forEach(w => html += `<li style="margin-bottom:8px; color:var(--danger);">❌ ${w.english} → ${w.chinese}</li>`);
     html += '</ul>';
   }
-  html += '<button onclick="backToMenu()" style="margin-top:20px;">Finish</button>';
+  html += '<button onclick="location.reload()" style="margin-top:20px;">Finish</button>';
   document.getElementById('quiz-question').innerHTML = html;
 }
 </script>
