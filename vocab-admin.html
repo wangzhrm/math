@@ -1,261 +1,436 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AST Secure Admin Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.12.0/dist/av-min.js"></script>
-    <script>
-        window.MathJax = {
-            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] }
-        };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <style>
-        :root { --primary: #1890ff; --success: #52c41a; --danger: #ff4d4f; --sidebar-w: 320px; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background: #f0f2f5; overflow: hidden; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vocab Admin - Secure Access</title>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root { 
+      --primary: #4361ee; --secondary: #7209b7; --success: #2a9d8f; --danger: #e63946; --warning: #ff9f1c;
+      --group-color: #9d4edd; --border: #dee2e6; --radius: 12px; --bg: #f0f2f5;
+    }
+    
+    #password-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: var(--primary); display: flex; align-items: center; 
+      justify-content: center; z-index: 9999; flex-direction: column;
+    }
+    .login-box { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; width: 300px; }
+    .login-box h2 { margin-top: 0; color: var(--primary); }
+    .login-box input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; text-align: center; font-size: 1.1rem; }
+    .login-box button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; }
 
-        #login-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #f0f2f5; z-index: 5000;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 350px; text-align: center; }
-        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        
-        #app-wrapper { display: none; width: 100%; height: 100%; flex-direction: row; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+    #main-app { display: none; } 
+    
+    .admin-container { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 20px; align-items: start; height: calc(100vh - 40px); }
+    .column { background: #e9ecef; border-radius: var(--radius); padding: 15px; display: flex; flex-direction: column; height: 100%; overflow-y: auto; }
+    .column h1 { font-size: 1.1rem; margin-top: 0; display: flex; align-items: center; gap: 10px; color: #444; }
 
-        #drawer {
-            position: fixed; left: calc(-1 * var(--sidebar-w)); top: 0;
-            width: var(--sidebar-w); height: 100%; background: white;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 1000;
-            transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box;
-        }
-        #drawer.open { left: 0; }
-        #toggle-bar {
-            position: fixed; left: 0; top: 0; width: 30px; height: 100%;
-            background: #444; color: white; cursor: pointer; z-index: 1001;
-            display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl;
-            font-size: 12px; letter-spacing: 2px; transition: left 0.3s ease;
-        }
-        #drawer.open + #toggle-bar { left: var(--sidebar-w); }
+    .card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 15px; margin-bottom: 15px; }
+    .drop-zone { min-height: 50px; background: #fafafa; border: 2px dashed var(--border); border-radius: 8px; padding: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .drag-over { border-color: var(--primary); background: rgba(67, 97, 238, 0.05); }
 
-        .main-container { flex: 1; display: flex; margin-left: 30px; width: calc(100% - 30px); }
-        .editor-area { flex: 1; padding: 20px; overflow-y: auto; }
-        .right-sidebar { width: 420px; background: #fff; border-left: 1px solid #ddd; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+    .tag { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; color: white; user-select: none; }
+    .tag-list { background: var(--primary); cursor: grab; position: relative; }
+    .tag-user { background: var(--secondary); cursor: grab; }
+    .tag-assigned { background: var(--primary); }
+    .tag-group-assigned { background: var(--group-color); }
+    .tag-member { background: #6c757d; }
 
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        textarea, .url-input { width: 100%; margin: 10px 0; border: 1px solid #d9d9d9; padding: 10px; border-radius: 4px; box-sizing: border-box; }
-        textarea { height: 120px; font-family: monospace; }
-        
-        /* Layout for Question Preview with Diagram */
-        .preview-container { display: flex; gap: 15px; align-items: flex-start; min-height: 50px; padding: 15px; border: 1px dashed #ccc; border-radius: 4px; margin-bottom: 20px; }
-        .preview-text { flex: 1; line-height: 1.6; white-space: pre-wrap; }
-        .preview-diagram { width: 200px; border-left: 1px solid #eee; padding-left: 15px; display: none; }
-        .preview-diagram img { max-width: 100%; height: auto; border-radius: 4px; }
-
-        #qP-box { background: #f6ffed; border-color: #b7eb8f; }
-        #sP-box { background: #e6f7ff; border-color: #91d5ff; }
-        
-        .tag { background: #e6f7ff; color: #1890ff; padding: 2px 6px; border-radius: 4px; margin-right: 4px; font-size: 10px; border: 1px solid #91d5ff; }
-        .q-list-item { padding: 12px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 6px; font-size: 12px; }
-        button { cursor: pointer; border-radius: 4px; border: none; font-weight: bold; padding: 8px 12px; }
-        .primary-btn { background: var(--primary); color: white; width: 100%; }
-        .save-btn { background: var(--success); color: white; width: 100%; margin-top: 10px; position: sticky; bottom: 0; }
-    </style>
+    .remove-btn { background: rgba(0,0,0,0.2); border: none; color: white; border-radius: 50%; width: 14px; height: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; }
+    .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+    input, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; font-size: 0.85rem; }
+    button { cursor: pointer; font-weight: 600; border: none; }
+    
+    .status-msg { font-size: 0.75rem; margin-top: 8px; color: var(--secondary); font-weight: bold; }
+    .column::-webkit-scrollbar { width: 6px; }
+    .column::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+  </style>
 </head>
 <body>
 
-<div id="login-overlay">
-    <div class="login-card">
-        <h2>AST Secure Login</h2>
-        <input type="text" id="userInput" placeholder="Username">
-        <input type="password" id="passInput" placeholder="Password">
-        <button onclick="attemptLogin()" class="primary-btn">Unlock System</button>
-    </div>
+<div id="password-overlay">
+  <div class="login-box">
+    <h2><i class="fas fa-lock"></i> Admin Login</h2>
+    <input type="password" id="adminPass" placeholder="Enter Password" onkeypress="if(event.key==='Enter') verifyPass()">
+    <button onclick="verifyPass()">Access Webpage</button>
+    <p id="error-msg" style="color:red; font-size:0.8rem; margin-top:10px; display:none;">Incorrect Password</p>
+  </div>
 </div>
 
-<div id="app-wrapper">
-    <div id="drawer">
-        <h3>Categories</h3>
-        <input type="text" id="newCatName" placeholder="New Category...">
-        <select id="targetParent" style="width:100%; margin: 10px 0;"><option value="">New Root</option></select>
-        <button onclick="addCategory()" class="primary-btn">Add</button>
-        <div id="categoryTree" style="overflow-y: auto; flex: 1; margin-top:10px;"></div>
-    </div>
-
-    <div id="toggle-bar" onclick="toggleDrawer()">☰ CATEGORIES</div>
-
-    <div class="main-container">
-        <div class="editor-area">
-            <div class="card">
-                <h2 id="editor-title" style="margin-top:0;">Question Editor</h2>
-                <input type="hidden" id="editingId" value="">
-                
-                <strong>Question LaTeX</strong>
-                <textarea id="qInput" oninput="updatePreviews()"></textarea>
-                
-                <strong>Diagram Image URL (Optional)</strong>
-                <input type="text" id="diagUrl" class="url-input" placeholder="https://example.com/image.png" oninput="updatePreviews()">
-                
-                <div id="qP-box" class="preview-container">
-                    <div id="qText" class="preview-text">Question Preview</div>
-                    <div id="qDiag" class="preview-diagram"></div>
-                </div>
-
-                <strong>Solution LaTeX</strong>
-                <textarea id="sInput" oninput="updatePreviews()"></textarea>
-                <div id="sP-box" class="preview-container">
-                    <div id="sText" class="preview-text">Solution Preview</div>
-                </div>
-            </div>
+<div id="main-app">
+  <div class="admin-container">
+    
+    <section class="column">
+      <h1><i class="fas fa-book"></i> 1. Vocabulary</h1>
+      <div class="card">
+        <div class="input-group">
+          <input type="text" id="listName" placeholder="New List Name">
+          <input type="file" id="excelFile" accept=".xlsx, .xls">
+          <button style="background:var(--success); color:white;" onclick="uploadVocabList()">Upload Excel</button>
         </div>
-
-        <div class="right-sidebar">
-            <h3>Categorization</h3>
-            <div id="editorHierarchies"></div>
-            <button class="save-btn" onclick="submitQuestion()">SAVE QUESTION</button>
-            <button id="cancelEdit" style="display:none; margin-top:5px; width:100%;" onclick="resetEditor(true)">Cancel Edit</button>
-
-            <h3 style="margin-top:20px;">Manager</h3>
-            <input type="text" id="qSearch" placeholder="Search..." oninput="fetchQuestions()" class="url-input">
-            <div id="dynamicFilters"></div>
-            <div id="existingQuestionsList"></div>
+        <div id="vocab-status" class="status-msg" style="display:none;">
+          <i class="fas fa-spinner fa-spin"></i> <span id="vocab-status-text">Ready</span>
         </div>
-    </div>
+        <button style="background:var(--warning); color:white; width: 100%; font-size: 0.7rem; margin-top:10px;" onclick="initializeSortOrders()">
+          <i class="fas fa-magic"></i> Fix Missing Sort Orders
+        </button>
+      </div>
+      <div class="card">
+        <span class="small-label">Vocabulary Pool (Drag to Reorder)</span>
+        <div id="pool-lists" class="drop-zone" ondragover="evOver(event)" ondrop="handlePoolDrop(event)"></div>
+      </div>
+    </section>
+
+    <section class="column">
+      <h1><i class="fas fa-users-cog"></i> 2. Groups</h1>
+      <div class="card">
+        <div class="input-group">
+          <input type="text" id="groupInput" placeholder="New Group Name">
+          <button style="background:var(--primary); color:white;" onclick="createGroup()">Create Group</button>
+        </div>
+      </div>
+      <div id="group-list-container"></div>
+    </section>
+
+    <section class="column">
+      <h1><i class="fas fa-user-graduate"></i> 3. Student Review</h1>
+      
+      <div class="card">
+        <span class="small-label">Bulk Upload Students (Col A: User, Col B: Pass)</span>
+        <div class="input-group">
+          <input type="file" id="studentExcelFile" accept=".xlsx, .xls">
+          <button style="background:var(--secondary); color:white;" onclick="uploadStudentList()">
+            <i class="fas fa-user-plus"></i> Upload Students
+          </button>
+        </div>
+        <div id="student-status" class="status-msg" style="display:none;">
+          <i class="fas fa-circle-notch fa-spin"></i> <span id="student-status-text">Ready</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span class="small-label" style="margin:0;">Student Pool (Drag to Groups)</span>
+            <button onclick="resetAllLogins()" style="background:var(--danger); color:white; font-size:0.7rem; padding:4px 8px; border-radius:4px; border:none; cursor:pointer;">
+                <i class="fas fa-undo"></i> Set login times to zero
+            </button>
+        </div>
+        <div id="pool-users" class="drop-zone"></div>
+      </div>
+      <div id="student-cards-container"></div>
+    </section>
+
+  </div>
 </div>
 
 <script>
-    AV.init({ appId: "XjQ3V5jxCqhiZfjZf0JFLNiN-gzGzoHsz", appKey: "LJwsKB85okDVlJODxvQTBdrX", serverURL: "https://xjq3v5jx.lc-cn-n1-shared.com" });
-    const Category = AV.Object.extend('Category');
-    const MathQuestion = AV.Object.extend('MathQuestion');
-    let categoryMap = {};
+const APP_ID = 'vALTi5ieVZvhJ44uiPMu5AFm-gzGzoHsz';
+const MASTER_KEY = '5rPpx9k9be8nSQZ2p7AwOzgc'; 
+const SERVER_URL = 'https://valti5ie.lc-cn-n1-shared.com';
 
-    async function attemptLogin() {
-        const u = document.getElementById('userInput').value;
-        const p = document.getElementById('passInput').value;
-        const query = new AV.Query('Master');
-        query.equalTo('username', u); query.equalTo('password', p);
-        const result = await query.first();
-        if (result) {
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('app-wrapper').style.display = 'flex';
-            await renderApp(); fetchQuestions();
-        } else { alert("Login failed"); }
-    }
+let data = { users: [], lists: [], groups: [], loginCounts: {} };
 
-    function toggleDrawer() { document.getElementById('drawer').classList.toggle('open'); }
+function verifyPass() {
+  const pass = document.getElementById('adminPass').value;
+  if (pass === "wang123") {
+    document.getElementById('password-overlay').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    load(); 
+  } else {
+    document.getElementById('error-msg').style.display = 'block';
+    document.getElementById('adminPass').value = '';
+  }
+}
 
-    function updatePreviews() {
-        const qVal = document.getElementById('qInput').value;
-        const sVal = document.getElementById('sInput').value;
-        const url = document.getElementById('diagUrl').value.trim();
+async function api(method, path, body = null) {
+  const headers = { 'X-LC-Id': APP_ID, 'X-LC-Key': MASTER_KEY + ',master', 'Content-Type': 'application/json' };
+  const res = await fetch(`${SERVER_URL}/1.1${path}`, { method, headers, body: body ? JSON.stringify(body) : null });
+  return res.json();
+}
 
-        // Update Text
-        document.getElementById('qText').innerHTML = qVal.replace(/\n/g, '<br>') || "Question Preview";
-        document.getElementById('sText').innerHTML = sVal.replace(/\n/g, '<br>') || "Solution Preview";
+async function load() {
+  const [u, l, g, h] = await Promise.all([
+    api('GET', '/classes/Student'),
+    api('GET', '/classes/VocabList?order=sortOrder'),
+    api('GET', '/classes/Group'),
+    api('GET', '/classes/LoginHistory?limit=1000')
+  ]);
 
-        // Update Diagram
-        const diagDiv = document.getElementById('qDiag');
-        if (url) {
-            diagDiv.innerHTML = `<img src="${url}" alt="Diagram">`;
-            diagDiv.style.display = 'block';
-        } else {
-            diagDiv.style.display = 'none';
+  // Calculate login counts per student
+  const counts = {};
+  if (h.results) {
+    h.results.forEach(record => {
+      counts[record.username] = (counts[record.username] || 0) + 1;
+    });
+  }
+
+  data = { 
+    users: u.results || [], 
+    lists: l.results || [], 
+    groups: g.results || [],
+    loginCounts: counts 
+  };
+  render();
+}
+
+async function resetAllLogins() {
+    if (!confirm("Are you sure you want to reset all login counts to zero? This will delete all login history records.")) return;
+    
+    const statusDiv = document.getElementById('student-status');
+    const statusText = document.getElementById('student-status-text');
+    statusDiv.style.display = 'block';
+    statusText.innerText = "Clearing history...";
+
+    try {
+        const history = await api('GET', '/classes/LoginHistory?limit=1000&keys=objectId');
+        if (history.results && history.results.length > 0) {
+            for (const item of history.results) {
+                await api('DELETE', `/classes/LoginHistory/${item.objectId}`);
+            }
         }
-
-        MathJax.typesetPromise([document.getElementById('qText'), document.getElementById('sText')]);
+        statusText.innerText = "All counts reset to zero.";
+        setTimeout(() => statusDiv.style.display = 'none', 2000);
+        load();
+    } catch (err) {
+        alert("Reset failed: " + err.message);
     }
+}
 
-    async function submitQuestion() {
-        const qId = document.getElementById('editingId').value;
-        const selects = document.querySelectorAll('.question-cat-select');
-        let catIds = [];
-        selects.forEach(s => catIds = catIds.concat(Array.from(s.selectedOptions).map(o => o.value)));
-        
-        if (catIds.length === 0) return alert("Select a category");
+// --- VOCABULARY LOGIC ---
+async function uploadVocabList() {
+  const file = document.getElementById('excelFile').files[0];
+  const name = document.getElementById('listName').value.trim();
+  const statusDiv = document.getElementById('vocab-status');
+  const statusText = document.getElementById('vocab-status-text');
 
-        const mq = qId ? AV.Object.createWithoutData('MathQuestion', qId) : new MathQuestion();
-        mq.set('latexQuestion', document.getElementById('qInput').value);
-        mq.set('latexSolution', document.getElementById('sInput').value);
-        mq.set('diagramUrl', document.getElementById('diagUrl').value.trim());
-        mq.set('categories', catIds.map(id => AV.Object.createWithoutData('Category', id)));
-        
-        await mq.save();
-        alert("Saved!"); resetEditor(false); fetchQuestions();
-    }
+  if (!file || !name) return alert('List Name and Excel File required');
 
-    async function editQuestion(id) {
-        const q = await new AV.Query('MathQuestion').get(id);
-        document.getElementById('editingId').value = id;
-        document.getElementById('qInput').value = q.get('latexQuestion') || "";
-        document.getElementById('sInput').value = q.get('latexSolution') || "";
-        document.getElementById('diagUrl').value = q.get('diagramUrl') || "";
-        document.getElementById('cancelEdit').style.display = "block";
-        
-        const selectedIds = (q.get('categories') || []).map(c => c.id);
-        document.querySelectorAll('.question-cat-select').forEach(sel => {
-            Array.from(sel.options).forEach(opt => opt.selected = selectedIds.includes(opt.value));
+  const duplicate = data.lists.find(l => l.listName.toLowerCase() === name.toLowerCase());
+  if (duplicate) return alert('A list with this name already exists.');
+
+  statusDiv.style.display = 'block';
+  statusText.innerText = "Processing...";
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: ['english', 'chinese'] });
+      const validRows = json.filter(r => r.english && r.chinese);
+
+      await api('POST', '/classes/VocabList', { listName: name, sharedWith: [], sortOrder: data.lists.length });
+
+      let count = 0;
+      for (const row of validRows) {
+        statusText.innerText = `Uploading: ${count + 1}/${validRows.length}`;
+        await api('POST', '/classes/Vocabulary', { 
+          english: String(row.english).trim(), 
+          chinese: String(row.chinese).trim(), 
+          listName: name 
         });
-        updatePreviews();
-    }
+        count++;
+      }
 
-    function resetEditor(force) {
-        document.getElementById('editingId').value = "";
-        document.getElementById('qInput').value = "";
-        document.getElementById('sInput').value = "";
-        document.getElementById('diagUrl').value = "";
-        document.getElementById('cancelEdit').style.display = "none";
-        if(force) {
-            document.querySelectorAll('.question-cat-select').forEach(s => s.selectedIndex = -1);
-        }
-        updatePreviews();
+      statusText.innerText = "Upload Complete!";
+      document.getElementById('listName').value = "";
+      setTimeout(() => { statusDiv.style.display = 'none'; }, 2000);
+      load();
+    } catch (err) {
+      alert("Error: " + err.message);
     }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
-    async function fetchQuestions() {
-        const search = document.getElementById('qSearch').value;
-        const query = new AV.Query('MathQuestion');
-        query.limit(30); query.descending('createdAt'); query.include('categories');
-        if(search) query.contains('latexQuestion', search);
-        
-        const results = await query.find();
-        const container = document.getElementById('existingQuestionsList');
-        container.innerHTML = "";
-        results.forEach(q => {
-            const tags = (q.get('categories') || []).map(c => `<span class="tag">${categoryMap[c.id] || ''}</span>`).join('');
-            const div = document.createElement('div');
-            div.className = 'q-list-item';
-            div.innerHTML = `<div>${tags}</div><div style="color:#666; margin:5px 0;">${(q.get('latexQuestion') || '').substring(0,40)}...</div>
-                             <button onclick="editQuestion('${q.id}')">Edit</button>`;
-            container.appendChild(div);
-        });
+async function delVocabList(id, name) {
+  if (!confirm(`Are you sure you want to delete "${name}"? This will remove all words in this list.`)) return;
+  
+  const statusDiv = document.getElementById('vocab-status');
+  const statusText = document.getElementById('vocab-status-text');
+  statusDiv.style.display = 'block';
+  statusText.innerText = "Deleting list entry...";
+
+  try {
+    await api('DELETE', `/classes/VocabList/${id}`);
+    statusText.innerText = "Cleaning up words...";
+    const words = await api('GET', `/classes/Vocabulary?where={"listName":"${name}"}`);
+    if (words.results) {
+      for (const word of words.results) {
+        await api('DELETE', `/classes/Vocabulary/${word.objectId}`);
+      }
     }
+    statusText.innerText = "Deleted Successfully";
+    setTimeout(() => { statusDiv.style.display = 'none'; }, 2000);
+    load();
+  } catch (err) {
+    alert("Delete failed: " + err.message);
+  }
+}
 
-    async function renderApp() {
-        const cats = await new AV.Query('Category').ascending('order').find();
-        const tree = document.getElementById('categoryTree');
-        const editor = document.getElementById('editorHierarchies');
-        tree.innerHTML = ""; editor.innerHTML = "";
-        cats.forEach(c => categoryMap[c.id] = c.get('name'));
+async function uploadStudentList() {
+    const file = document.getElementById('studentExcelFile').files[0];
+    const statusDiv = document.getElementById('student-status');
+    const statusText = document.getElementById('student-status-text');
 
-        const roots = cats.filter(c => !c.get('parent'));
-        roots.forEach(root => {
-            const children = cats.filter(c => c.get('parent')?.id === root.id);
-            const box = document.createElement('div');
-            box.innerHTML = `<strong>${root.get('name')}</strong><br><select multiple class="question-cat-select" style="width:100%; height:80px;">
-                ${children.map(ch => `<option value="${ch.id}">${ch.get('name')}</option>`).join('')}</select><br><br>`;
-            editor.appendChild(box);
-            document.getElementById('targetParent').innerHTML += `<option value="${root.id}">${root.get('name')}</option>`;
-        });
-    }
+    if (!file) return alert('Select Excel file');
 
-    async function addCategory() {
-        const n = document.getElementById('newCatName').value;
-        const p = document.getElementById('targetParent').value;
-        const c = new Category(); c.set('name', n);
-        if(p) c.set('parent', AV.Object.createWithoutData('Category', p));
-        await c.save(); location.reload();
-    }
+    statusDiv.style.display = 'block';
+    statusText.innerText = "Uploading...";
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+            const validRows = rows.filter(row => row[0] && row[1]);
+            let count = 0;
+
+            for (const row of validRows) {
+                statusText.innerText = `Added: ${count + 1}/${validRows.length}`;
+                await api('POST', '/classes/Student', { 
+                    username: String(row[0]).trim(), 
+                    password: String(row[1]).trim() 
+                });
+                count++;
+            }
+            statusText.innerText = "Complete";
+            setTimeout(() => statusDiv.style.display = 'none', 2000);
+            load();
+        } catch (err) { alert("Error uploading"); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// --- RENDER ---
+function render() {
+  document.getElementById('pool-lists').innerHTML = data.lists.map(l => `
+    <div class="tag tag-list" data-id="${l.objectId}" draggable="true" ondragstart="evDrag(event, 'list', '${l.objectId}')">
+      <i class="fas fa-grip-vertical"></i> ${l.listName}
+      <button class="remove-btn" onclick="delVocabList('${l.objectId}', '${l.listName}')">×</button>
+    </div>`).join('');
+
+  document.getElementById('pool-users').innerHTML = data.users.map(u => `
+    <div class="tag tag-user" draggable="true" ondragstart="evDrag(event, 'user', '${u.username}')">${u.username}</div>`).join('');
+
+  document.getElementById('group-list-container').innerHTML = data.groups.map(g => `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <strong>${g.groupName} <i class="fas fa-edit edit-icon" onclick="renameGroup('${g.objectId}', '${g.groupName}')"></i></strong>
+        <button onclick="delGroup('${g.objectId}')" style="color:var(--danger); background:none; padding:0; cursor:pointer;">×</button>
+      </div>
+      <span class="small-label">Members</span>
+      <div class="drop-zone" ondragover="evOver(event)" ondrop="evDrop(event, 'g-member', '${g.objectId}')">
+        ${(g.members || []).map(m => `<div class="tag tag-member">${m}<button class="remove-btn" onclick="remMember('${g.objectId}','${m}')">×</button></div>`).join('')}
+      </div>
+      <span class="small-label">Group Lists</span>
+      <div class="drop-zone" style="border-color:var(--group-color)" ondragover="evOver(event)" ondrop="evDrop(event, 'g-list', '${g.objectId}')">
+        ${(g.sharedLists || []).map(lId => {
+          const l = data.lists.find(x => x.objectId === lId);
+          return l ? `<div class="tag tag-group-assigned">${l.listName}<button class="remove-btn" onclick="remListGroup('${g.objectId}','${lId}')">×</button></div>` : '';
+        }).join('')}
+      </div>
+    </div>`).join('');
+
+  document.getElementById('student-cards-container').innerHTML = data.users.map(u => {
+    const individualLists = data.lists.filter(l => l.sharedWith?.includes(u.username));
+    const groupListIds = [...new Set(data.groups.filter(g => g.members?.includes(u.username)).flatMap(g => g.sharedLists || []))];
+    const groupLists = data.lists.filter(l => groupListIds.includes(l.objectId));
+    const loginCount = data.loginCounts[u.username] || 0;
+
+    return `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>
+            <i class="fas fa-user"></i> ${u.username} 
+            <span style="color:var(--primary); font-size:0.75rem; background:#eef2ff; padding:2px 6px; border-radius:4px; margin-left:8px;">
+                Logins: ${loginCount}
+            </span>
+        </strong>
+        <button onclick="delStudent('${u.objectId}')" style="color:var(--danger); background:none; font-size:0.8rem; cursor:pointer;">Delete</button>
+      </div>
+      <div class="drop-zone" style="margin-top:8px" ondragover="evOver(event)" ondrop="evDrop(event, 'u-list', '${u.username}')">
+        ${individualLists.map(l => `<div class="tag tag-assigned">${l.listName}<button class="remove-btn" onclick="remListUser('${l.objectId}','${u.username}')">×</button></div>`).join('')}
+        ${groupLists.map(l => `<div class="tag tag-group-assigned">${l.listName} <i class="fas fa-lock" style="font-size:0.6rem"></i></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function handlePoolDrop(e) {
+  e.preventDefault();
+  const type = e.dataTransfer.getData("type");
+  const draggedId = e.dataTransfer.getData("id");
+  if (type !== 'list') return;
+  const target = e.target.closest('.tag-list');
+  if (!target || target.dataset.id === draggedId) return;
+
+  const draggedIdx = data.lists.findIndex(l => l.objectId === draggedId);
+  const targetIdx = data.lists.findIndex(l => l.objectId === target.dataset.id);
+  const [movedItem] = data.lists.splice(draggedIdx, 1);
+  data.lists.splice(targetIdx, 0, movedItem);
+
+  render(); 
+  for (let i = 0; i < data.lists.length; i++) {
+    await api('PUT', `/classes/VocabList/${data.lists[i].objectId}`, { sortOrder: i });
+  }
+}
+
+async function evDrop(e, targetType, targetId) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  const sType = e.dataTransfer.getData("type");
+  const sId = e.dataTransfer.getData("id");
+
+  if (targetType === 'g-member' && sType === 'user') {
+    const g = data.groups.find(x => x.objectId === targetId);
+    if (!g.members?.includes(sId)) await api('PUT', `/classes/Group/${targetId}`, { members: [...(g.members || []), sId] });
+  } else if (targetType === 'g-list' && sType === 'list') {
+    const g = data.groups.find(x => x.objectId === targetId);
+    if (!g.sharedLists?.includes(sId)) await api('PUT', `/classes/Group/${targetId}`, { sharedLists: [...(g.sharedLists || []), sId] });
+  } else if (targetType === 'u-list' && sType === 'list') {
+    const l = data.lists.find(x => x.objectId === sId);
+    if (!l.sharedWith?.includes(targetId)) await api('PUT', `/classes/VocabList/${sId}`, { sharedWith: [...(l.sharedWith || []), targetId] });
+  }
+  load();
+}
+
+function evDrag(e, type, id) { e.dataTransfer.setData("type", type); e.dataTransfer.setData("id", id); }
+function evOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+async function delStudent(id) { if(confirm('Delete student?')) { await api('DELETE', `/classes/Student/${id}`); load(); } }
+async function renameGroup(id, oldName) {
+  const newName = prompt("New name:", oldName);
+  if (newName && newName !== oldName) { await api('PUT', `/classes/Group/${id}`, { groupName: newName }); load(); }
+}
+async function remListGroup(gId, lId) {
+  const g = data.groups.find(x => x.objectId === gId);
+  await api('PUT', `/classes/Group/${gId}`, { sharedLists: (g.sharedLists || []).filter(id => id !== lId) });
+  load();
+}
+async function remListUser(lId, user) {
+  const l = data.lists.find(x => x.objectId === lId);
+  await api('PUT', `/classes/VocabList/${lId}`, { sharedWith: (l.sharedWith || []).filter(u => u !== user) });
+  load();
+}
+async function remMember(gId, user) {
+  const g = data.groups.find(x => x.objectId === gId);
+  await api('PUT', `/classes/Group/${gId}`, { members: g.members.filter(m => m !== user) });
+  load();
+}
+async function createGroup() {
+  const val = document.getElementById('groupInput').value;
+  if (val) { await api('POST', '/classes/Group', { groupName: val, members: [], sharedLists: [] }); load(); }
+}
+async function delGroup(id) { if(confirm('Delete Group?')) { await api('DELETE', `/classes/Group/${id}`); load(); } }
+async function initializeSortOrders() {
+  if(!confirm("Fix orders?")) return;
+  for (let i = 0; i < data.lists.length; i++) {
+    await api('PUT', `/classes/VocabList/${data.lists[i].objectId}`, { sortOrder: i });
+  }
+  load();
+}
 </script>
 </body>
 </html>
