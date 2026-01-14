@@ -68,15 +68,14 @@
             <label>Year / Session Filter</label>
             <select id="yearSelect" onchange="applyFilters()">
                 <option value="ALL">All Sessions</option>
-                <option value="practice">Practice Only</option>
-            </select>
+                </select>
         </div>
 
         <div class="filter-group">
             <label>Included Parts</label>
             <div class="checkbox-group">
                 <label class="checkbox-item"><input type="checkbox" class="part-check" value="part a" checked onchange="applyFilters()"> Part A</label>
-                <label class="checkbox-item"><input type="checkbox" class="part-check" value="part b" checked onchange="applyFilters()"> Part B</label>
+                <label class="checkbox-item"><input type="checkbox" class="part-check" value="part b" checked onchange="bit checked onchange="applyFilters()"> Part B</label>
                 <label class="checkbox-item"><input type="checkbox" class="part-check" value="part c" checked onchange="applyFilters()"> Part C</label>
             </div>
         </div>
@@ -130,7 +129,6 @@
             let chaptersRootId = null;
             let astRootId = null;
 
-            // 1. Identify Root IDs
             catSnap.forEach(doc => {
                 const data = doc.data();
                 const name = (data.name || "").toLowerCase().trim();
@@ -140,7 +138,6 @@
                 }
             });
 
-            // 2. Categorize data with order values
             catSnap.forEach(doc => {
                 const data = doc.data();
                 catMap[doc.id] = data.name;
@@ -151,15 +148,11 @@
                 }
 
                 if (pId && pId === astRootId) {
-                    // Added: Save the order so we can sort just like the Admin Dashboard
                     sessionList.push({ id: doc.id, name: data.name, order: data.order || 999 });
                 }
             });
             
-            // 3. Populate Dropdown using the "order" property
             const yearSelect = document.getElementById('yearSelect');
-            
-            // SORT BY ORDER (Same as Admin Page)
             sessionList.sort((a, b) => a.order - b.order);
             
             sessionList.forEach(session => {
@@ -196,7 +189,6 @@
         rawQuestions.forEach(q => {
             const qCatIds = q.categories || [];
             const qCatNames = qCatIds.map(id => (catMap[id] || "").toLowerCase());
-            
             const matchesYear = (selectedYear === 'all') || qCatNames.includes(selectedYear);
             
             let markValue = 0;
