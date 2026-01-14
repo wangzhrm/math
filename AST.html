@@ -16,7 +16,8 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        let categoryLookup = {}; // Dictionary to store { "ID": "Name" } for the year tag
+        let categoryLookup = {}; 
+        let allFetchedQuestions = []; 
 
         window.attemptLogin = async () => {
             const u = document.getElementById('userInput').value;
@@ -39,16 +40,13 @@
             const snap = await getDocs(collection(db, "Category"));
             const results = [];
             categoryLookup = {}; 
-            
             snap.forEach(d => {
                 const data = d.data();
                 results.push({ id: d.id, ...data });
-                categoryLookup[d.id] = data.name; // Map ID to Name for prefix logic
+                categoryLookup[d.id] = data.name;
             });
-            
             const panel = document.getElementById('filterPanel');
             panel.innerHTML = "";
-            // Sort by order and find roots (where parent is null)
             const roots = results.filter(c => !c.parent).sort((a,b) => (a.order || 0) - (b.order || 0));
             roots.forEach(root => {
                 const div = document.createElement('div');
@@ -57,10 +55,7 @@
                 const sel = document.createElement('select');
                 sel.className = "filter-select";
                 sel.innerHTML = `<option value="">All ${root.name}</option>`;
-                
-                results.filter(c => c.parent?.id === root.id)
-                       .sort((a,b) => (a.order || 0) - (b.order || 0))
-                       .forEach(child => {
+                results.filter(c => c.parent?.id === root.id).sort((a,b) => (a.order || 0) - (b.order || 0)).forEach(child => {
                     sel.innerHTML += `<option value="${child.id}">${child.name}</option>`;
                 });
                 div.appendChild(sel);
@@ -71,82 +66,197 @@
         window.loadQuestions = async () => {
             const container = document.getElementById('questionList');
             container.innerHTML = "<p style='text-align:center;'>Fetching questions...</p>";
-            
-            const selectedIds = Array.from(document.querySelectorAll('.filter-select'))
-                .map(s => s.value).filter(v => v !== "");
+            const selectedIds = Array.from(document.querySelectorAll('.filter-select')).map(s => s.value).filter(v => v !== "");
             
             try {
                 const snap = await getDocs(collection(db, "MathQuestion"));
                 container.innerHTML = snap.empty ? "<p style='text-align:center;'>No questions found.</p>" : "";
+                allFetchedQuestions = [];
                 let i = 0;
                 
                 snap.forEach(docSnap => {
                     const qData = docSnap.data();
                     const qCatIds = qData.categories || [];
-
-                    // Filter logic: Check if all selected filters are present in this question
                     if (selectedIds.length > 0 && !selectedIds.every(id => qCatIds.includes(id))) return;
 
-                    // RESTORED YEAR LOGIC: Translates IDs back to names using lookup
                     const catNames = qCatIds.map(id => categoryLookup[id] || "");
                     const isPractice = catNames.some(n => n.toLowerCase().includes('practice'));
                     const yearName = catNames.find(n => n.match(/^\d{4}$/));
-                    const yearPrefix = (!isPractice && yearName) ? `<span class="year-tag">[${yearName}]</span>` : "";
+                    const yearPrefix = (!isPractice && yearName) ? `[${yearName}]` : "";
+
+                    const questionObj = { id: docSnap.id, ...qData, yearPrefix };
+                    allFetchedQuestions.push(questionObj);
 
                     const card = document.createElement('div');
                     card.className = "q-card";
                     card.innerHTML = `
-                        <div style="margin-bottom:15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px;">
-                            ${yearPrefix} <strong>Question ${++i}</strong>
+                        <div style="margin-bottom:15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; display:flex; justify-content:space-between;">
+                            <span><input type="checkbox" class="print-selector" data-id="${docSnap.id}"> <strong>${yearPrefix} Question ${++i}</strong></span>
                         </div>
                         <div class="q-content-wrapper">
-                            <div class="q-text-part"><div class="q-body">${(qData.latexQuestion || "").replace(/\n/g, '<br>')}</div></div>
+                            <div class="q-text-part"><div class="q-body">${(qData.latexQuestion || "")}</div></div>
                             ${qData.diagramUrl ? `<div class="q-image-part"><img src="${qData.diagramUrl}"></div>` : ""}
                         </div>
                         <div class="sol-box">
                             <strong style="color:var(--success)">Solution</strong>
-                            <div class="s-content" style="margin-top:10px;">${(qData.latexSolution || "").replace(/\n/g, '<br>')}</div>
+                            <div class="s-content" style="margin-top:10px;">${(qData.latexSolution || "")}</div>
                         </div>`;
                     container.appendChild(card);
                 });
                 if (window.MathJax) MathJax.typesetPromise([container]);
             } catch (err) { container.innerHTML = "Error: " + err.message; }
         };
+
+        window.openPrintBuilder = () => {
+            const selectedCheckboxes = document.querySelectorAll('.print-selector:checked');
+            if (selectedCheckboxes.length === 0) return alert("Please select questions first.");
+            
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.id);
+            const selectedData = allFetchedQuestions.filter(q => selectedIds.includes(q.id));
+            
+            const builderBody = document.getElementById('builderList');
+            builderBody.innerHTML = "";
+            
+            selectedData.forEach((q, idx) => {
+                const item = document.createElement('div');
+                item.className = 'builder-item';
+                item.draggable = true;
+                item.dataset.id = q.id;
+                item.innerHTML = `
+                    <div style="flex:1"><strong>${q.yearPrefix}</strong> ${q.latexQuestion.substring(0, 40)}...</div>
+                    <div>Gap (cm): <input type="number" class="gap-size" value="4" step="0.5" style="width:50px"></div>
+                    <div class="drag-handle">☰ Drag</div>
+                `;
+                item.addEventListener('dragstart', (e) => { item.classList.add('dragging'); });
+                item.addEventListener('dragover', (e) => e.preventDefault());
+                item.addEventListener('drop', (e) => {
+                    const draggingItem = document.querySelector('.dragging');
+                    builderBody.insertBefore(draggingItem, item);
+                });
+                item.addEventListener('dragend', () => item.classList.remove('dragging'));
+                builderBody.appendChild(item);
+            });
+
+            document.getElementById('app-wrapper').style.display = 'none';
+            document.getElementById('print-builder-screen').style.display = 'block';
+        };
+
+        window.generateFinalPaper = () => {
+            const builderItems = document.querySelectorAll('.builder-item');
+            const paperWindow = window.open('', '_blank');
+            
+            let questionsHtml = "";
+            builderItems.forEach((item, index) => {
+                const id = item.dataset.id;
+                const qData = allFetchedQuestions.find(q => q.id === id);
+                const gapHeight = item.querySelector('.gap-size').value;
+                
+                // Note: removed .replace(/\n/g, '<br>') to prevent unwanted row spacing
+                questionsHtml += `
+                <div class="paper-q">
+                    <div class="q-header">Question ${index + 1} ${qData.yearPrefix}</div>
+                    <div class="q-container">
+                        ${qData.diagramUrl ? `<img src="${qData.diagramUrl}" class="q-img">` : ""}
+                        <div class="q-text">${qData.latexQuestion}</div>
+                    </div>
+                    <div style="height: ${gapHeight}cm; clear: both;"></div>
+                </div>`;
+            });
+
+            const fullHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <script>
+                    window.MathJax = {
+                        tex: { inlineMath: [['$', '$'], ['\\\\(', '\\\\)']], displayMath: [['$$', '$$']] }
+                    };
+                <\/script>
+                <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async><\/script>
+                <style>
+                    body { font-family: "Times New Roman", serif; padding: 0.8in; font-size: 12pt; }
+                    .paper-q { page-break-inside: avoid; margin-bottom: 0; }
+                    .q-header { font-weight: bold; margin-bottom: 8px; display: block; }
+                    .q-container { width: 100%; position: relative; }
+                    .q-text { line-height: 1.4; white-space: normal; } /* Normal white-space removes the manual row gaps */
+                    .q-img { max-width: 180px; float: right; margin-left: 15px; margin-bottom: 5px; }
+                </style>
+            </head>
+            <body>
+                ${questionsHtml}
+                <script>
+                    window.onload = () => {
+                        const checkMathJax = setInterval(() => {
+                            if (window.MathJax && window.MathJax.typesetPromise) {
+                                clearInterval(checkMathJax);
+                                window.MathJax.typesetPromise().then(() => {
+                                    setTimeout(() => { window.print(); }, 600);
+                                });
+                            }
+                        }, 300);
+                    };
+                <\/script>
+            </body>
+            </html>`;
+            
+            paperWindow.document.write(fullHtml);
+            paperWindow.document.close();
+        };
+
+        window.closeBuilder = () => {
+            document.getElementById('app-wrapper').style.display = 'flex';
+            document.getElementById('print-builder-screen').style.display = 'none';
+        }
     </script>
     <script>window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] } };</script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root { --primary: #1890ff; --success: #52c41a; --danger: #ff4d4f; }
         body { font-family: 'Arial', sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
-        .q-body, .s-content { white-space: pre-wrap; word-wrap: break-word; line-height: 1.8; }
+        .q-body { white-space: pre-wrap; line-height: 1.6; }
         .q-content-wrapper { display: flex; gap: 20px; flex-wrap: wrap; }
         .q-text-part { flex: 1; min-width: 280px; }
-        .q-image-part { width: 220px; }
-        .q-image-part img { max-width: 100%; border-radius: 4px; border: 1px solid #eee; }
+        .q-image-part img { max-width: 180px; border-radius: 4px; border: 1px solid #eee; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; z-index: 5000; display: flex; align-items: center; justify-content: center; }
         .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 320px; text-align: center; }
         .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         #app-wrapper { display: none; max-width: 900px; margin: auto; padding: 20px; flex-direction: column; }
         .filter-panel { display: flex; gap: 15px; background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #eee; }
         .filter-select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; }
-        .q-card { border: 1px solid #eee; padding: 30px; margin-bottom: 25px; border-radius: 12px; background: white; }
-        .year-tag { color: var(--primary); font-weight: bold; margin-right: 8px; }
+        .q-card { border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 12px; background: white; }
+        .primary-btn { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .sol-box { margin-top: 20px; padding: 20px; background-color: #f6ffed; border: 1px solid #b7eb8f; border-radius: 8px; display: none; }
         .show-sol .sol-box { display: block !important; }
-        .primary-btn { padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
+        #print-builder-screen { display:none; max-width: 800px; margin: 40px auto; background: white; padding: 30px; border-radius: 12px; }
+        .builder-item { display: flex; align-items: center; padding: 12px; border: 1px solid #eee; margin-bottom: 8px; background: #f9f9f9; cursor: move; border-radius: 6px; }
+        .builder-item.dragging { opacity: 0.4; }
+        .drag-handle { margin-left: 15px; color: #aaa; }
     </style>
 </head>
 <body>
-    <div id="login-overlay"><div class="login-card"><h2>AST Student Portal</h2><input type="text" id="userInput" placeholder="Username"><input type="password" id="passInput" placeholder="Password"><button onclick="attemptLogin()" class="primary-btn" style="width:100%">Login</button><p id="loginMsg" style="color:var(--danger)"></p></div></div>
+    <div id="login-overlay"><div class="login-card"><h2>AST Portal</h2><input type="text" id="userInput" placeholder="Username"><input type="password" id="passInput" placeholder="Password"><button onclick="attemptLogin()" class="primary-btn" style="width:100%">Login</button><p id="loginMsg" style="color:var(--danger)"></p></div></div>
+    
     <div id="app-wrapper">
         <div style="display:flex; justify-content: space-between; align-items: center;"><h1>Question Bank</h1><button class="primary-btn" style="background:#ff4d4f;" onclick="location.reload()">Logout</button></div>
         <div class="filter-panel" id="filterPanel"></div>
         <div style="display:flex; gap:10px; margin-bottom:20px;">
             <button onclick="loadQuestions()" class="primary-btn">Apply Filters</button>
-            <button onclick="window.print()" class="primary-btn" style="background:var(--success)">Print to PDF</button>
+            <button onclick="openPrintBuilder()" class="primary-btn" style="background:var(--success)">Create Paper</button>
             <label style="background:#fff; padding:10px; border:1px solid #ddd; border-radius:6px; cursor:pointer;"><input type="checkbox" onchange="document.body.classList.toggle('show-sol')"> Solutions</label>
         </div>
         <div id="questionList"></div>
+    </div>
+
+    <div id="print-builder-screen">
+        <h2>Paper Builder</h2>
+        <p>Rearrange questions and set <b>Empty Gap (cm)</b> for writing space.</p>
+        <div id="builderList"></div>
+        <div style="margin-top:20px; display:flex; gap:10px;">
+            <button onclick="generateFinalPaper()" class="primary-btn" style="flex:2">Export PDF</button>
+            <button onclick="closeBuilder()" class="primary-btn" style="background:#666; flex:1">Cancel</button>
+        </div>
     </div>
 </body>
 </html>
