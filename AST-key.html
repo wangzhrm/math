@@ -103,27 +103,31 @@
             }).forEach(k => {
                 const item = document.createElement('div');
                 item.className = "search-item";
+                // Encode the latex string to handle special characters in the onclick event
+                const encodedLatex = encodeURIComponent(k.latex);
                 item.innerHTML = `
                     <div class="search-item-text" style="cursor:pointer" onclick="document.getElementById('viewLibraryModal').style.display='none'; enterFocusMode('${k.id}')">
                         <span class="latex-content">$${k.latex}$</span><br>
                         <small style="color:var(--primary); font-weight:bold;">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
-                        <button class="small-btn" onclick="editKnowledge('${k.id}', '${k.latex.replace(/'/g, "\\'")}')" style="color:var(--primary); margin-bottom:2px;">Edit</button>
+                        <button class="small-btn" onclick="editKnowledge('${k.id}', '${encodedLatex}')" style="color:var(--primary); margin-bottom:2px;">Edit</button>
                         <button class="small-btn" onclick="deleteKnowledge('${k.id}')" style="color:var(--danger)">Del</button>
                     </div>`;
                 list.appendChild(item);
             });
+            // Force MathJax to process the library modal content
             if (window.MathJax) MathJax.typesetPromise([list]);
         };
 
-        window.editKnowledge = async (id, currentLatex) => {
+        window.editKnowledge = async (id, encodedLatex) => {
+            const currentLatex = decodeURIComponent(encodedLatex);
             const newLatex = prompt("Edit Knowledge LaTeX:", currentLatex);
             if (newLatex !== null && newLatex !== currentLatex) {
                 await updateDoc(doc(db, "Knowledge", id), { latex: newLatex });
                 await loadKnowledge();
                 renderViewLibrary();
-                await loadQuestions(); // Refresh main list to show updated content
+                await loadQuestions(); 
             }
         };
 
@@ -333,12 +337,11 @@
         .s-content { padding: 15px; white-space: pre-wrap; line-height: 1.6; color: #333; }
         .show-sol .sol-box { display: block !important; }
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:6000; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 600px; max-height: 85vh; overflow-y: auto; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
         .search-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 10px 0; min-height: 60px; gap: 10px; }
         .linked-item { background-color: #f6ffed !important; border-left: 4px solid #52c41a; padding-left: 5px; }
         .search-item-text { flex: 1; min-width: 0; }
-        .latex-content { display: inline-block; max-width: 100%; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .search-item-text:hover .latex-content { white-space: normal; overflow: visible; background: #fff; position: relative; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 5px; border-radius: 4px; }
+        .latex-content { display: inline-block; max-width: 100%; font-size: 13px; }
         .search-item-actions { width: 85px; text-align: right; flex-shrink: 0; }
         #login-overlay { position: fixed; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
     </style>
@@ -389,7 +392,7 @@
                 <input type="text" id="viewKnowSearch" placeholder="Search knowledge..." oninput="renderViewLibrary()" style="padding:10px; border:1px solid #ddd; border-radius:6px;">
                 <select id="viewKnowCatFilter" onchange="renderViewLibrary()" style="padding:10px; border:1px solid #ddd; border-radius:6px;"></select>
             </div>
-            <div id="viewKnowList" style="border: 1px solid #eee; min-height: 250px; max-height: 400px; overflow-y: auto; padding: 0 10px;"></div>
+            <div id="viewKnowList" style="border: 1px solid #eee; min-height: 400px; max-height: 600px; overflow-y: auto; padding: 0 10px;"></div>
             <button onclick="document.getElementById('viewLibraryModal').style.display='none'" class="primary-btn" style="background:#8c8c8c; width:100%; margin-top:15px;">Close</button>
         </div>
     </div>
