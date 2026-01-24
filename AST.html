@@ -90,21 +90,30 @@
                     const card = document.createElement('div');
                     card.className = "q-card";
                     card.innerHTML = `
-                        <div style="margin-bottom:15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; display:flex; justify-content:space-between;">
+                        <div class="q-header-row">
                             <span><input type="checkbox" class="print-selector" data-id="${docSnap.id}"> <strong>${yearPrefix} Question ${++i}</strong></span>
+                            <button class="toggle-sol-btn" onclick="toggleSingleSol(this)">View Solution</button>
                         </div>
                         <div class="q-content-wrapper">
                             <div class="q-text-part"><div class="q-body">${(qData.latexQuestion || "")}</div></div>
                             ${qData.diagramUrl ? `<div class="q-image-part"><img src="${qData.diagramUrl}"></div>` : ""}
                         </div>
                         <div class="sol-box">
-                            <strong style="color:var(--success)">Solution</strong>
-                            <div class="s-content" style="margin-top:10px;">${(qData.latexSolution || "")}</div>
+                            <div class="sol-header">Solution</div>
+                            <div class="s-content">${(qData.latexSolution || "")}</div>
                         </div>`;
                     container.appendChild(card);
                 });
                 if (window.MathJax) MathJax.typesetPromise([container]);
             } catch (err) { container.innerHTML = "Error: " + err.message; }
+        };
+
+        window.toggleSingleSol = (btn) => {
+            const solBox = btn.closest('.q-card').querySelector('.sol-box');
+            const isHidden = solBox.style.display === 'none' || solBox.style.display === '';
+            solBox.style.display = isHidden ? 'block' : 'none';
+            btn.innerText = isHidden ? 'Hide Solution' : 'View Solution';
+            btn.classList.toggle('active', isHidden);
         };
 
         window.openPrintBuilder = () => {
@@ -151,7 +160,6 @@
                 const qData = allFetchedQuestions.find(q => q.id === id);
                 const gapHeight = item.querySelector('.gap-size').value;
                 
-                // Note: removed .replace(/\n/g, '<br>') to prevent unwanted row spacing
                 questionsHtml += `
                 <div class="paper-q">
                     <div class="q-header">Question ${index + 1} ${qData.yearPrefix}</div>
@@ -179,7 +187,7 @@
                     .paper-q { page-break-inside: avoid; margin-bottom: 0; }
                     .q-header { font-weight: bold; margin-bottom: 8px; display: block; }
                     .q-container { width: 100%; position: relative; }
-                    .q-text { line-height: 1.4; white-space: normal; } /* Normal white-space removes the manual row gaps */
+                    .q-text { line-height: 1.4; white-space: normal; }
                     .q-img { max-width: 180px; float: right; margin-left: 15px; margin-bottom: 5px; }
                 </style>
             </head>
@@ -212,22 +220,65 @@
     <script>window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] } };</script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
-        :root { --primary: #1890ff; --success: #52c41a; --danger: #ff4d4f; }
-        body { font-family: 'Arial', sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
-        .q-body { white-space: pre-wrap; line-height: 1.6; }
-        .q-content-wrapper { display: flex; gap: 20px; flex-wrap: wrap; }
-        .q-text-part { flex: 1; min-width: 280px; }
-        .q-image-part img { max-width: 180px; border-radius: 4px; border: 1px solid #eee; }
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; z-index: 5000; display: flex; align-items: center; justify-content: center; }
-        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 320px; text-align: center; }
-        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        :root { --primary: #1890ff; --success: #52c41a; --danger: #ff4d4f; --sol-bg: #f9fbf9; --sol-border: #d3e4d3; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
+        
         #app-wrapper { display: none; max-width: 900px; margin: auto; padding: 20px; flex-direction: column; }
         .filter-panel { display: flex; gap: 15px; background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #eee; }
         .filter-select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; }
-        .q-card { border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 12px; background: white; }
+        
+        .q-card { border: 1px solid #e1e4e8; padding: 20px; margin-bottom: 20px; border-radius: 12px; background: white; transition: box-shadow 0.2s; }
+        .q-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .q-header-row { margin-bottom:15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; display:flex; justify-content:space-between; align-items:center; }
+        
+        /* Ensures manual line breaks from Admin are preserved */
+        .q-body, .s-content { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
+        
+        .q-content-wrapper { display: flex; gap: 20px; flex-wrap: wrap; }
+        .q-text-part { flex: 1; min-width: 280px; }
+        .q-image-part img { max-width: 180px; border-radius: 4px; border: 1px solid #eee; }
+        
         .primary-btn { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .sol-box { margin-top: 20px; padding: 20px; background-color: #f6ffed; border: 1px solid #b7eb8f; border-radius: 8px; display: none; }
+        
+        /* Refined Solution Styles */
+        .sol-box { 
+            margin-top: 20px; 
+            background-color: var(--sol-bg); 
+            border: 1px solid var(--sol-border); 
+            border-radius: 8px; 
+            overflow: hidden;
+            display: none;
+        }
+        .sol-header { 
+            background: #f0f5f0; 
+            padding: 8px 15px; 
+            font-weight: bold; 
+            color: #2d5a2d; 
+            font-size: 12px; 
+            border-bottom: 1px solid #d3e4d3;
+            text-transform: uppercase;
+        }
+        .s-content { padding: 15px; color: #1a331a; }
+        
+        .toggle-sol-btn { 
+            background: #fff; 
+            border: 1px solid #d9d9d9; 
+            padding: 4px 12px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 12px;
+            color: #555;
+            transition: all 0.2s;
+        }
+        .toggle-sol-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .toggle-sol-btn.active { background: #e6f7ff; border-color: #1890ff; color: #1890ff; }
+
         .show-sol .sol-box { display: block !important; }
+        .show-sol .toggle-sol-btn { display: none; } 
+
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; z-index: 5000; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 320px; text-align: center; }
+        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         
         #print-builder-screen { display:none; max-width: 800px; margin: 40px auto; background: white; padding: 30px; border-radius: 12px; }
         .builder-item { display: flex; align-items: center; padding: 12px; border: 1px solid #eee; margin-bottom: 8px; background: #f9f9f9; cursor: move; border-radius: 6px; }
@@ -239,12 +290,17 @@
     <div id="login-overlay"><div class="login-card"><h2>AST Portal</h2><input type="text" id="userInput" placeholder="Username"><input type="password" id="passInput" placeholder="Password"><button onclick="attemptLogin()" class="primary-btn" style="width:100%">Login</button><p id="loginMsg" style="color:var(--danger)"></p></div></div>
     
     <div id="app-wrapper">
-        <div style="display:flex; justify-content: space-between; align-items: center;"><h1>Question Bank</h1><button class="primary-btn" style="background:#ff4d4f;" onclick="location.reload()">Logout</button></div>
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h1>Question Bank</h1>
+            <button class="primary-btn" style="background:#ff4d4f;" onclick="location.reload()">Logout</button>
+        </div>
         <div class="filter-panel" id="filterPanel"></div>
         <div style="display:flex; gap:10px; margin-bottom:20px;">
             <button onclick="loadQuestions()" class="primary-btn">Apply Filters</button>
             <button onclick="openPrintBuilder()" class="primary-btn" style="background:var(--success)">Create Paper</button>
-            <label style="background:#fff; padding:10px; border:1px solid #ddd; border-radius:6px; cursor:pointer;"><input type="checkbox" onchange="document.body.classList.toggle('show-sol')"> Solutions</label>
+            <label style="background:#fff; padding:10px; border:1px solid #ddd; border-radius:6px; cursor:pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" onchange="document.body.classList.toggle('show-sol')"> Show All Solutions
+            </label>
         </div>
         <div id="questionList"></div>
     </div>
