@@ -24,7 +24,7 @@
             const u = document.getElementById('userInput').value;
             const p = document.getElementById('passInput').value;
             try {
-                const q = query(collection(db, "Student"), where("username", "==", u), where("password", "==", p));
+                const q = query(collection(db, "Master"), where("username", "==", u), where("password", "==", p));
                 const snap = await getDocs(q);
                 if (!snap.empty) {
                     document.getElementById('login-overlay').style.display = 'none';
