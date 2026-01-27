@@ -103,11 +103,10 @@
             }).forEach(k => {
                 const item = document.createElement('div');
                 item.className = "search-item";
-                // Encode the latex string to handle special characters in the onclick event
                 const encodedLatex = encodeURIComponent(k.latex);
                 item.innerHTML = `
                     <div class="search-item-text" style="cursor:pointer" onclick="document.getElementById('viewLibraryModal').style.display='none'; enterFocusMode('${k.id}')">
-                        <span class="latex-content">$${k.latex}$</span><br>
+                        <div class="latex-content-container">$${k.latex}$</div>
                         <small style="color:var(--primary); font-weight:bold;">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
@@ -116,8 +115,14 @@
                     </div>`;
                 list.appendChild(item);
             });
-            // Force MathJax to process the library modal content
             if (window.MathJax) MathJax.typesetPromise([list]);
+        };
+
+        window.updateKnowPreview = () => {
+            const input = document.getElementById('knowLatex').value;
+            const preview = document.getElementById('knowPreview');
+            preview.innerHTML = '$' + input + '$';
+            if (window.MathJax) MathJax.typesetPromise([preview]);
         };
 
         window.editKnowledge = async (id, encodedLatex) => {
@@ -210,6 +215,7 @@
                 alert("Knowledge Saved!");
                 document.getElementById('knowModal').style.display = 'none';
                 document.getElementById('knowLatex').value = "";
+                document.getElementById('knowPreview').innerHTML = "";
                 await loadKnowledge();
             } catch (e) { alert(e.message); }
         };
@@ -298,7 +304,7 @@
                 item.className = "search-item" + (isLinked ? " linked-item" : "");
                 item.innerHTML = `
                     <div class="search-item-text">
-                        <span class="latex-content">$${k.latex}$</span><br>
+                        <div class="latex-content-container">$${k.latex}$</div>
                         <small style="color:#888">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
@@ -338,12 +344,14 @@
         .show-sol .sol-box { display: block !important; }
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:6000; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
-        .search-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 10px 0; min-height: 60px; gap: 10px; }
+        .search-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 10px 0; min-height: 60px; gap: 15px; }
         .linked-item { background-color: #f6ffed !important; border-left: 4px solid #52c41a; padding-left: 5px; }
         .search-item-text { flex: 1; min-width: 0; }
-        .latex-content { display: inline-block; max-width: 100%; font-size: 13px; }
-        .search-item-actions { width: 85px; text-align: right; flex-shrink: 0; }
+        /* Automatic line wrapping for long LaTeX content */
+        .latex-content-container { font-size: 14px; word-wrap: break-word; overflow-wrap: break-word; }
+        .search-item-actions { width: 85px; text-align: right; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; }
         #login-overlay { position: fixed; width: 100%; height: 100%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .preview-box { margin-top: 15px; padding: 15px; border: 1px dashed var(--primary); border-radius: 8px; background: #fafafa; min-height: 50px; }
     </style>
 </head>
 <body>
@@ -401,7 +409,11 @@
         <div class="modal-content">
             <h3 style="margin-top:0">New Knowledge</h3>
             <select id="knowCategory" class="filter-select" style="width:100%; margin-bottom:15px;"></select>
-            <textarea id="knowLatex" placeholder="LaTeX content..." style="width:100%; height:120px; padding:10px; border-radius:8px; border:1px solid #ddd; box-sizing: border-box; font-family: monospace;"></textarea>
+            <textarea id="knowLatex" placeholder="LaTeX content..." oninput="updateKnowPreview()" style="width:100%; height:120px; padding:10px; border-radius:8px; border:1px solid #ddd; box-sizing: border-box; font-family: monospace;"></textarea>
+            
+            <div style="margin-top:15px; font-size:12px; font-weight:bold; color:var(--primary);">Preview:</div>
+            <div id="knowPreview" class="preview-box"></div>
+
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button onclick="saveKnowledge()" class="primary-btn" style="flex:1">Save</button>
                 <button onclick="document.getElementById('knowModal').style.display='none'" class="primary-btn" style="background:#8c8c8c; flex:1">Cancel</button>
