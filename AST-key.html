@@ -220,23 +220,37 @@
             } catch (e) { alert(e.message); }
         };
 
+        // FIXED: Helper to refresh questions without losing scroll position
+        async function refreshQuestionsWithScroll() {
+            const scrollPos = window.scrollY;
+            await loadQuestions();
+            if (window.MathJax) {
+                // Wait for MathJax to finish rendering before scrolling back
+                window.MathJax.typesetPromise().then(() => {
+                    window.scrollTo(0, scrollPos);
+                });
+            } else {
+                window.scrollTo(0, scrollPos);
+            }
+        }
+
         window.attachKnowledgeToQuestion = async (qId, kId) => {
             const qRef = doc(db, "MathQuestion", qId);
             await updateDoc(qRef, { knowledgeIds: arrayUnion(kId) });
-            await loadQuestions(); 
+            await refreshQuestionsWithScroll(); // Changed from loadQuestions
             renderKnowledgeSearch();
         };
 
         window.removeKnowledgeFromQuestion = async (qId, kId) => {
             const qRef = doc(db, "MathQuestion", qId);
             await updateDoc(qRef, { knowledgeIds: arrayRemove(kId) });
-            await loadQuestions(); 
+            await refreshQuestionsWithScroll(); // Changed from loadQuestions
             renderKnowledgeSearch();
         };
 
         window.loadQuestions = async () => {
             const container = document.getElementById('questionList');
-            container.innerHTML = "<p style='text-align:center;'>Fetching questions...</p>";
+            // Removed the "Fetching questions..." innerHTML clear to prevent jumpy layout
             try {
                 const snap = await getDocs(collection(db, "MathQuestion"));
                 allFetchedQuestions = [];
