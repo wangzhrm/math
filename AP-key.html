@@ -2,14 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AP Math Knowledge Mapper</title>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, query, where, getDocs, doc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Updated for AP Math Project
         const firebaseConfig = {
             apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
             authDomain: "ap-math-8783b.firebaseapp.com",
@@ -31,7 +29,6 @@
             const u = document.getElementById('userInput').value;
             const p = document.getElementById('passInput').value;
             try {
-                // Matches the "Student" collection check used in your new project
                 const q = query(collection(db, "Master"), where("username", "==", u), where("password", "==", p));
                 const snap = await getDocs(q);
                 if (!snap.empty) {
@@ -41,7 +38,7 @@
                     await loadKnowledge(); 
                     await loadQuestions();
                 } else { 
-                    document.getElementById('loginMsg').innerText = "Invalid AP Math credentials.";
+                    document.getElementById('loginMsg').innerText = "Invalid credentials.";
                 }
             } catch (err) { alert(err.message); }
         };
@@ -52,43 +49,56 @@
             categoryLookup = {}; 
             snap.forEach(d => {
                 const data = d.data();
-                results.push({ id: d.id, ...data });
-                categoryLookup[d.id] = data.name;
+                if (data.name) {
+                    results.push({ id: d.id, ...data });
+                    categoryLookup[d.id] = data.name;
+                }
             });
 
             const panel = document.getElementById('filterPanel');
-            const knowCat = document.getElementById('knowCategory');
+            const knowCat = document.getElementById('knowCategory'); 
             const searchCat = document.getElementById('searchCatFilter');
             const viewCat = document.getElementById('viewKnowCatFilter');
             
             panel.innerHTML = "";
-            const template = '<option value="">All Chapters</option>';
             knowCat.innerHTML = '<option value="">Select Chapter</option>';
-            searchCat.innerHTML = template;
-            viewCat.innerHTML = template;
+            searchCat.innerHTML = '<option value="">All Chapters</option>';
+            viewCat.innerHTML = '<option value="">All Chapters</option>';
 
             const roots = results.filter(c => !c.parent).sort((a,b) => (a.order || 0) - (b.order || 0));
+            
             roots.forEach(root => {
                 const div = document.createElement('div');
                 div.className = 'filter-group';
                 div.innerHTML = `<strong>${root.name}</strong>`;
+                
                 const sel = document.createElement('select');
                 sel.className = "filter-select";
                 sel.innerHTML = `<option value="">All ${root.name}</option>`;
                 
-                const optGroup = document.createElement('optgroup');
-                optGroup.label = root.name;
+                const children = results.filter(c => {
+                    const pid = (c.parent && typeof c.parent === 'object') ? c.parent.id : c.parent;
+                    return pid === root.id;
+                }).sort((a,b) => (a.order || 0) - (b.order || 0));
 
-                results.filter(c => c.parent?.id === root.id).sort((a,b) => (a.order || 0) - (b.order || 0)).forEach(child => {
+                children.forEach(child => {
                     sel.innerHTML += `<option value="${child.id}">${child.name}</option>`;
-                    optGroup.innerHTML += `<option value="${child.id}">${child.name}</option>`;
                 });
-                div.appendChild(sel);
-                panel.appendChild(div);
-                
-                knowCat.appendChild(optGroup.cloneNode(true));
-                searchCat.appendChild(optGroup.cloneNode(true));
-                viewCat.appendChild(optGroup.cloneNode(true));
+
+                if (sel.options.length > 1) {
+                    div.appendChild(sel);
+                    panel.appendChild(div);
+
+                    // Only include in Knowledge dropdowns if the root category is "Chapter"
+                    if (root.name.toLowerCase().includes("chapter")) {
+                        children.forEach(child => {
+                            const opt = `<option value="${child.id}">${child.name}</option>`;
+                            knowCat.innerHTML += opt;
+                            searchCat.innerHTML += opt;
+                            viewCat.innerHTML += opt;
+                        });
+                    }
+                }
             });
         }
 
@@ -97,6 +107,63 @@
             allKnowledge = [];
             snap.forEach(d => allKnowledge.push({ id: d.id, ...d.data() }));
         }
+
+        window.loadQuestions = async () => {
+            const container = document.getElementById('questionList');
+            try {
+                const snap = await getDocs(collection(db, "MathQuestion"));
+                allFetchedQuestions = [];
+                snap.forEach(docSnap => allFetchedQuestions.push({ id: docSnap.id, ...docSnap.data() }));
+                
+                // Chronological Sort: Oldest (Early) first
+                allFetchedQuestions.sort((a, b) => {
+                    const timeA = a.createdAt?.seconds || 0;
+                    const timeB = b.createdAt?.seconds || 0;
+                    if (timeA !== timeB) return timeA - timeB;
+                    return a.id.localeCompare(b.id);
+                });
+
+                renderCurrentQuestions();
+            } catch (err) { container.innerHTML = "Error: " + err.message; }
+        };
+
+        window.renderCurrentQuestions = () => {
+            const container = document.getElementById('questionList');
+            const selectedIds = Array.from(document.querySelectorAll('.filter-select')).map(s => s.value).filter(v => v !== "");
+            container.innerHTML = "";
+            let i = 0;
+
+            allFetchedQuestions.forEach(qData => {
+                const qCatIds = qData.categories || [];
+                if (selectedIds.length > 0 && !selectedIds.every(id => qCatIds.includes(id))) return;
+
+                const qKnowIds = qData.knowledgeIds || [];
+                const card = document.createElement('div');
+                card.className = "q-card";
+                
+                let knowHtml = qKnowIds.map(kid => {
+                    const k = allKnowledge.find(kn => kn.id === kid);
+                    return k ? `<div class="know-tag" onclick="enterFocusMode('${k.id}')" style="cursor:pointer">$${k.latex}$</div>` : "";
+                }).join("");
+
+                card.innerHTML = `
+                    <div class="q-card-header">
+                        <span><strong>Question ${++i}</strong></span>
+                        <button onclick="openAttachModal('${qData.id}')" class="small-btn">🔗 Link Knowledge (${qKnowIds.length})</button>
+                    </div>
+                    <div class="q-content-wrapper">
+                        <div class="q-text-part"><div class="q-body">${qData.latexQuestion}</div></div>
+                        ${qData.diagramUrl ? `<div class="q-image-part"><img src="${qData.diagramUrl}"></div>` : ""}
+                    </div>
+                    ${knowHtml ? `<div class="linked-knowledges">${knowHtml}</div>` : ""}
+                    <div class="sol-box">
+                        <div class="sol-title">Solution</div>
+                        <div class="s-content">${qData.latexSolution}</div>
+                    </div>`;
+                container.appendChild(card);
+            });
+            if (window.MathJax) MathJax.typesetPromise([container]);
+        };
 
         window.renderViewLibrary = () => {
             const search = document.getElementById('viewKnowSearch').value.toLowerCase();
@@ -114,7 +181,7 @@
                 const encodedLatex = encodeURIComponent(k.latex);
                 item.innerHTML = `
                     <div class="search-item-text" style="cursor:pointer" onclick="document.getElementById('viewLibraryModal').style.display='none'; enterFocusMode('${k.id}')">
-                        <span class="latex-content">$${k.latex}$</span><br>
+                        <div class="latex-content-container">$${k.latex}$</div>
                         <small style="color:var(--primary); font-weight:bold;">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
@@ -126,149 +193,22 @@
             if (window.MathJax) MathJax.typesetPromise([list]);
         };
 
-        window.editKnowledge = async (id, encodedLatex) => {
-            const currentLatex = decodeURIComponent(encodedLatex);
-            const newLatex = prompt("Edit Knowledge LaTeX:", currentLatex);
-            if (newLatex !== null && newLatex !== currentLatex) {
-                await updateDoc(doc(db, "Knowledge", id), { latex: newLatex });
-                await loadKnowledge();
-                renderViewLibrary();
-                await loadQuestions(); 
-            }
-        };
-
-        window.deleteKnowledge = async (id) => {
-            if (confirm("Are you sure? This removes it from all linked questions.")) {
-                await deleteDoc(doc(db, "Knowledge", id));
-                await loadKnowledge();
-                renderViewLibrary();
-                await loadQuestions();
-            }
-        };
-
-        window.enterFocusMode = (kId) => {
-            const k = allKnowledge.find(x => x.id === kId);
-            if (!k) return;
-            document.getElementById('main-content-view').style.display = 'none';
-            const focusView = document.getElementById('focus-view');
-            focusView.style.display = 'block';
-            
-            document.getElementById('focus-header-content').innerHTML = `
-                <div style="background:#e6f7ff; padding:20px; border-radius:8px; border:1px solid #91d5ff; margin-bottom:20px;">
-                    <div style="font-size:12px; font-weight:bold; color:#0050b3; text-transform:uppercase;">${categoryLookup[k.categoryId] || 'General'}</div>
-                    <div style="font-size:18px; margin-top:10px;">$${k.latex}$</div>
-                </div>
-            `;
-            
-            const list = document.getElementById('focus-question-list');
-            list.innerHTML = "";
-            const linkedQuestions = allFetchedQuestions.filter(q => q.knowledgeIds?.includes(kId));
-            
-            linkedQuestions.forEach((qData, idx) => {
-                const card = document.createElement('div');
-                card.className = "q-card";
-                card.innerHTML = `
-                    <div class="q-card-header">
-                        <span><input type="checkbox" class="focus-selector" data-id="${qData.id}"> <strong>Question ${idx + 1}</strong></span>
-                    </div>
-                    <div class="q-body">${qData.latexQuestion}</div>
-                `;
-                list.appendChild(card);
-            });
-            if (window.MathJax) MathJax.typesetPromise([focusView]);
-        };
-
-        window.exitFocusMode = () => {
-            document.getElementById('focus-view').style.display = 'none';
-            document.getElementById('main-content-view').style.display = 'block';
-        };
-
-        window.generatePDF = () => {
-            const selected = Array.from(document.querySelectorAll('.focus-selector:checked'));
-            if(selected.length === 0) return alert("Select questions first.");
-            let printWindow = window.open('', '_blank');
-            let headerHtml = document.getElementById('focus-header-content').innerHTML;
-            let content = `<html><head><title>AP Math Export</title>
-                <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
-                <style>body{font-family:serif; padding:40px;} .q{margin-bottom:40px; page-break-inside:avoid;} .header{margin-bottom:30px; border-bottom:2px solid #333; padding-bottom:10px;}</style>
-                </head><body><div class="header">${headerHtml}</div>`;
-            selected.forEach((el, i) => {
-                const qId = el.getAttribute('data-id');
-                const qData = allFetchedQuestions.find(x => x.id === qId);
-                content += `<div class="q"><strong>Question ${i+1}:</strong><br><div style="margin-top:10px;">${qData.latexQuestion}</div></div>`;
-            });
-            content += `</body></html>`;
-            printWindow.document.write(content);
-            printWindow.document.close();
-            setTimeout(() => { printWindow.print(); }, 1200);
+        window.updateKnowPreview = () => {
+            const input = document.getElementById('knowLatex').value;
+            const preview = document.getElementById('knowPreview');
+            preview.innerHTML = '$' + input + '$';
+            if (window.MathJax) MathJax.typesetPromise([preview]);
         };
 
         window.saveKnowledge = async () => {
             const content = document.getElementById('knowLatex').value;
             const catId = document.getElementById('knowCategory').value;
-            if(!content || !catId) return alert("Latex and Chapter required.");
+            if(!content || !catId) return alert("Please provide both LaTeX and a Chapter.");
             await addDoc(collection(db, "Knowledge"), { latex: content, categoryId: catId, createdAt: new Date() });
             document.getElementById('knowModal').style.display = 'none';
             document.getElementById('knowLatex').value = "";
+            document.getElementById('knowPreview').innerHTML = "";
             await loadKnowledge();
-        };
-
-        window.attachKnowledgeToQuestion = async (qId, kId) => {
-            await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayUnion(kId) });
-            await loadQuestions(); 
-            renderKnowledgeSearch();
-        };
-
-        window.removeKnowledgeFromQuestion = async (qId, kId) => {
-            await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayRemove(kId) });
-            await loadQuestions(); 
-            renderKnowledgeSearch();
-        };
-
-        window.loadQuestions = async () => {
-            const container = document.getElementById('questionList');
-            container.innerHTML = "<p style='text-align:center;'>Fetching questions...</p>";
-            const snap = await getDocs(collection(db, "MathQuestion"));
-            allFetchedQuestions = [];
-            snap.forEach(docSnap => allFetchedQuestions.push({ id: docSnap.id, ...docSnap.data() }));
-            renderCurrentQuestions();
-        };
-
-        window.renderCurrentQuestions = () => {
-            const container = document.getElementById('questionList');
-            const selectedIds = Array.from(document.querySelectorAll('.filter-select')).map(s => s.value).filter(v => v !== "");
-            container.innerHTML = "";
-            let i = 0;
-
-            allFetchedQuestions.forEach(qData => {
-                const qCatIds = qData.categories || [];
-                if (selectedIds.length > 0 && !selectedIds.every(id => qCatIds.includes(id))) return;
-
-                const qKnowIds = qData.knowledgeIds || [];
-                const card = document.createElement('div');
-                card.className = "q-card";
-                let knowHtml = qKnowIds.map(kid => {
-                    const k = allKnowledge.find(kn => kn.id === kid);
-                    return k ? `<div class="know-tag" onclick="enterFocusMode('${k.id}')">$${k.latex}$</div>` : "";
-                }).join("");
-
-                card.innerHTML = `
-                    <div class="q-card-header">
-                        <span><input type="checkbox" class="print-selector" data-id="${qData.id}"> <strong>Question ${++i}</strong></span>
-                        <button onclick="openAttachModal('${qData.id}')" class="small-btn">🔗 Link Knowledge (${qKnowIds.length})</button>
-                    </div>
-                    <div class="q-content-wrapper">
-                        <div class="q-text-part"><div class="q-body">${qData.latexQuestion}</div></div>
-                        ${qData.diagramUrl ? `<div class="q-image-part"><img src="${qData.diagramUrl}"></div>` : ""}
-                    </div>
-                    ${knowHtml ? `<div class="linked-knowledges">${knowHtml}</div>` : ""}
-                    <div class="sol-box">
-                        <div class="sol-title">Solution</div>
-                        <div class="s-content">${qData.latexSolution}</div>
-                    </div>`;
-                container.appendChild(card);
-            });
-            if (window.MathJax) MathJax.typesetPromise([container]);
         };
 
         window.openAttachModal = (qId) => {
@@ -292,7 +232,7 @@
                 item.className = "search-item" + (isLinked ? " linked-item" : "");
                 item.innerHTML = `
                     <div class="search-item-text">
-                        <span class="latex-content">$${k.latex}$</span><br>
+                        <div class="latex-content-container">$${k.latex}$</div>
                         <small style="color:#888">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
@@ -305,65 +245,106 @@
             });
             if (window.MathJax) MathJax.typesetPromise([list]);
         };
+
+        window.attachKnowledgeToQuestion = async (qId, kId) => {
+            await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayUnion(kId) });
+            await loadQuestions(); 
+            renderKnowledgeSearch();
+        };
+
+        window.removeKnowledgeFromQuestion = async (qId, kId) => {
+            await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayRemove(kId) });
+            await loadQuestions(); 
+            renderKnowledgeSearch();
+        };
+
+        window.enterFocusMode = (kId) => {
+            const k = allKnowledge.find(x => x.id === kId);
+            if (!k) return;
+            document.getElementById('main-content-view').style.display = 'none';
+            const focusView = document.getElementById('focus-view');
+            focusView.style.display = 'block';
+            document.getElementById('focus-header-content').innerHTML = `
+                <div style="background:#e6f7ff; padding:20px; border-radius:8px; border:1px solid #91d5ff; margin-bottom:20px;">
+                    <div style="font-size:12px; font-weight:bold; color:#0050b3; text-transform:uppercase;">${categoryLookup[k.categoryId] || 'General'}</div>
+                    <div style="font-size:18px; margin-top:10px;">$${k.latex}$</div>
+                </div>`;
+            const list = document.getElementById('focus-question-list');
+            list.innerHTML = "";
+            const linkedQuestions = allFetchedQuestions.filter(q => q.knowledgeIds?.includes(kId));
+            linkedQuestions.forEach((qData, idx) => {
+                const card = document.createElement('div');
+                card.className = "q-card";
+                card.innerHTML = `<div class="q-body">${qData.latexQuestion}</div>`;
+                list.appendChild(card);
+            });
+            if (window.MathJax) MathJax.typesetPromise([focusView]);
+        };
+
+        window.exitFocusMode = () => {
+            document.getElementById('focus-view').style.display = 'none';
+            document.getElementById('main-content-view').style.display = 'block';
+        };
     </script>
+
     <script>window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] } };</script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <style>
         :root { --primary: #1890ff; --success: #52c41a; --danger: #ff4d4f; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f0f2f5; }
-        #app-wrapper { display: none; max-width: 1100px; margin: auto; padding: 20px; flex-direction: column; }
-        .filter-panel { display: flex; gap: 15px; background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #e1e4e8; overflow-x: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f4f7f9; }
+        #app-wrapper { display: none; max-width: 1000px; margin: auto; padding: 20px; flex-direction: column; }
+        .filter-panel { display: flex; gap: 15px; background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #e1e4e8; overflow-x: auto; }
         .filter-select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; min-width: 140px; }
-        .q-card { border: 1px solid #e1e4e8; padding: 20px; margin-bottom: 20px; border-radius: 10px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative; }
+        .q-card { border: 1px solid #e1e4e8; padding: 20px; margin-bottom: 20px; border-radius: 10px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .q-card-header { display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 15px; }
         .q-body { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
         .q-content-wrapper { display: flex; gap: 20px; flex-wrap: wrap; }
         .q-text-part { flex: 1; min-width: 300px; }
-        .q-image-part img { max-width: 250px; border-radius: 4px; border: 1px solid #eee; }
+        .q-image-part img { max-width: 200px; border-radius: 4px; border: 1px solid #eee; }
         .primary-btn { padding: 10px 18px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
         .small-btn { padding: 5px 12px; font-size: 12px; border: 1px solid #d9d9d9; border-radius: 4px; cursor: pointer; background: #fff; }
-        .add-btn { color: var(--primary); border-color: var(--primary); }
-        .remove-btn { color: var(--danger); border-color: var(--danger); }
         .linked-knowledges { margin-top: 15px; padding-top: 10px; border-top: 1px dashed #eee; display: flex; gap: 8px; flex-wrap: wrap; }
-        .know-tag { background: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 2px 10px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+        .know-tag { background: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 2px 10px; border-radius: 4px; font-size: 13px; }
         .sol-box { margin-top: 20px; background: #fffdf6; border: 1px solid #ffe58f; border-radius: 8px; display: none; overflow: hidden; }
         .sol-title { background: #fff1b8; padding: 5px 15px; font-size: 12px; font-weight: bold; color: #874d00; text-transform: uppercase; border-bottom: 1px solid #ffe58f; }
         .s-content { padding: 15px; white-space: pre-wrap; line-height: 1.6; color: #333; }
         .show-sol .sol-box { display: block !important; }
-        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:6000; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 850px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
-        .search-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 12px 0; min-height: 65px; gap: 15px; }
-        .linked-item { background-color: #f6ffed !important; border-left: 4px solid #52c41a; padding-left: 10px; }
-        .search-item-text { flex: 1; min-width: 0; }
-        .latex-content { display: inline-block; max-width: 100%; font-size: 14px; }
-        .search-item-actions { width: 90px; text-align: right; flex-shrink: 0; }
-        #login-overlay { position: fixed; inset:0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:6000; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
+        #login-overlay { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .floating-actions { position: fixed; right: 20px; bottom: 30px; display: flex; flex-direction: column; gap: 12px; z-index: 5000; }
+        .floating-actions .primary-btn { box-shadow: 0 4px 12px rgba(0,0,0,0.2); min-width: 140px; }
+        .search-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 10px 0; gap: 15px; }
+        .linked-item { background-color: #f6ffed !important; border-left: 4px solid #52c41a; padding-left: 5px; }
     </style>
 </head>
 <body>
+
     <div id="login-overlay">
-        <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 300px; text-align: center;">
-            <h2 style="margin-top:0">AP Math Key Portal</h2>
-            <input type="text" id="userInput" placeholder="Username" style="width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
-            <input type="password" id="passInput" placeholder="Password" style="width:100%; padding:12px; margin:10px 0; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
+        <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 280px; text-align: center;">
+            <h2 style="margin-top:0; color: #1890ff;">AP Math Knowledge Mapper</h2>
+            <input type="text" id="userInput" placeholder="Username" style="width:100%; padding:10px; margin:8px 0; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
+            <input type="password" id="passInput" placeholder="Password" style="width:100%; padding:10px; margin:8px 0; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
             <button onclick="attemptLogin()" class="primary-btn" style="width:100%">Login</button>
-            <p id="loginMsg" style="color:var(--danger); margin-top:15px; font-size:14px;"></p>
+            <p id="loginMsg" style="color:var(--danger); font-size: 13px; margin-top: 10px;"></p>
         </div>
     </div>
     
     <div id="app-wrapper">
         <div id="main-content-view">
-            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                <h1 style="margin:0; color:#262626;">Knowledge Mapper</h1>
-                <button class="primary-btn" style="background:#8c8c8c;" onclick="location.reload()">Logout</button>
+            <div class="floating-actions">
+                <button onclick="document.getElementById('viewLibraryModal').style.display='flex'; renderViewLibrary();" class="primary-btn" style="background:#fa8c16">View Library</button>
+                <button onclick="document.getElementById('knowModal').style.display='flex'" class="primary-btn" style="background:#722ed1">Add Knowledge</button>
+            </div>
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h1 style="margin:0;">Question Bank</h1>
+                <button class="primary-btn" style="background:var(--danger);" onclick="location.reload()">Logout</button>
             </div>
             <div class="filter-panel" id="filterPanel"></div>
-            <div style="display:flex; gap:12px; margin-bottom:25px; align-items: center; flex-wrap: wrap;">
+            <div style="display:flex; gap:12px; margin-bottom:20px; align-items: center; flex-wrap: wrap;">
                 <button onclick="renderCurrentQuestions()" class="primary-btn">Apply Filters</button>
-                <button onclick="document.getElementById('viewLibraryModal').style.display='flex'; renderViewLibrary();" class="primary-btn" style="background:#fa8c16">Knowledge Library</button>
-                <button onclick="document.getElementById('knowModal').style.display='flex'" class="primary-btn" style="background:#722ed1">+ Add New Knowledge</button>
-                <label style="background:#fff; padding:10px 15px; border:1px solid #ddd; border-radius:6px; cursor:pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                <label style="background:#fff; padding:9px 15px; border:1px solid #ddd; border-radius:6px; cursor:pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" onchange="document.body.classList.toggle('show-sol')"> Show Solutions
                 </label>
             </div>
@@ -372,48 +353,48 @@
 
         <div id="focus-view" style="display:none;">
             <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
-                <button onclick="exitFocusMode()" class="primary-btn" style="background:#8c8c8c">← Back to Dashboard</button>
-                <button onclick="generatePDF()" class="primary-btn" style="background:var(--success)">📄 Export Selected Questions</button>
+                <button onclick="exitFocusMode()" class="primary-btn" style="background:#8c8c8c">← Back</button>
             </div>
             <div id="focus-header-content"></div>
             <div id="focus-question-list"></div>
         </div>
     </div>
 
-    <div id="viewLibraryModal" class="modal-overlay">
-        <div class="modal-content">
-            <h3 style="margin-top:0">Knowledge Library</h3>
-            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:15px;">
-                <input type="text" id="viewKnowSearch" placeholder="Search knowledge..." oninput="renderViewLibrary()" style="padding:12px; border:1px solid #ddd; border-radius:6px;">
-                <select id="viewKnowCatFilter" onchange="renderViewLibrary()" style="padding:12px; border:1px solid #ddd; border-radius:6px;"></select>
-            </div>
-            <div id="viewKnowList" style="border: 1px solid #eee; min-height: 400px; max-height: 550px; overflow-y: auto; padding: 0 10px; border-radius: 6px;"></div>
-            <button onclick="document.getElementById('viewLibraryModal').style.display='none'" class="primary-btn" style="background:#8c8c8c; width:100%; margin-top:15px;">Close Library</button>
-        </div>
-    </div>
-
     <div id="knowModal" class="modal-overlay">
         <div class="modal-content" style="width: 500px;">
-            <h3 style="margin-top:0">Add New Knowledge Point</h3>
+            <h3>New Knowledge Point</h3>
             <select id="knowCategory" class="filter-select" style="width:100%; margin-bottom:15px;"></select>
-            <textarea id="knowLatex" placeholder="Enter LaTeX here..." style="width:100%; height:140px; padding:12px; border-radius:8px; border:1px solid #ddd; box-sizing: border-box; font-family: monospace;"></textarea>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button onclick="saveKnowledge()" class="primary-btn" style="flex:1">Save Knowledge</button>
+            <textarea id="knowLatex" placeholder="Enter LaTeX..." oninput="updateKnowPreview()" style="width:100%; height:120px; padding:10px; border-radius:8px; border:1px solid #ddd; box-sizing: border-box;"></textarea>
+            <div id="knowPreview" style="margin-top:10px; padding:15px; border:1px dashed #1890ff; border-radius:8px; background:#fafafa; min-height:40px;"></div>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="saveKnowledge()" class="primary-btn" style="flex:1">Save</button>
                 <button onclick="document.getElementById('knowModal').style.display='none'" class="primary-btn" style="background:#8c8c8c; flex:1">Cancel</button>
             </div>
         </div>
     </div>
 
+    <div id="viewLibraryModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Knowledge Library</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;">
+                <input type="text" id="viewKnowSearch" placeholder="Search..." oninput="renderViewLibrary()" style="padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <select id="viewKnowCatFilter" onchange="renderViewLibrary()" style="padding:10px; border:1px solid #ddd; border-radius:6px;"></select>
+            </div>
+            <div id="viewKnowList" style="border:1px solid #eee; max-height:500px; overflow-y:auto; padding:10px;"></div>
+            <button onclick="document.getElementById('viewLibraryModal').style.display='none'" class="primary-btn" style="background:#8c8c8c; width:100%; margin-top:15px;">Close</button>
+        </div>
+    </div>
+
     <div id="attachModal" class="modal-overlay">
         <div class="modal-content">
-            <h3 style="margin-top:0">Link Knowledge to Question</h3>
+            <h3>Link Knowledge</h3>
             <input type="hidden" id="targetQId">
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;">
-                <input type="text" id="knowSearch" placeholder="Search library..." oninput="renderKnowledgeSearch()" style="padding:12px; border:1px solid #ddd; border-radius:6px;">
-                <select id="searchCatFilter" onchange="renderKnowledgeSearch()" style="padding:12px; border:1px solid #ddd; border-radius:6px;"></select>
+                <input type="text" id="knowSearch" placeholder="Search..." oninput="renderKnowledgeSearch()" style="padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <select id="searchCatFilter" onchange="renderKnowledgeSearch()" style="padding:10px; border:1px solid #ddd; border-radius:6px;"></select>
             </div>
-            <div id="knowSearchList" style="border: 1px solid #eee; min-height: 300px; max-height: 450px; overflow-y: auto; padding: 0 10px; border-radius: 6px;"></div>
-            <button onclick="document.getElementById('attachModal').style.display='none'" class="primary-btn" style="background:#8c8c8c; width:100%; margin-top:20px;">Done</button>
+            <div id="knowSearchList" style="border:1px solid #eee; max-height:400px; overflow-y:auto; padding:10px;"></div>
+            <button onclick="document.getElementById('attachModal').style.display='none'" class="primary-btn" style="background:#8c8c8c; width:100%; margin-top:15px;">Done</button>
         </div>
     </div>
 </body>
