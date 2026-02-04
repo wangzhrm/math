@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Knowledge Library - Foldable & Fixed</title>
+    <title>AST Knowledge Bank</title>
     
     <script>
         window.MathJax = { 
@@ -19,67 +19,40 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
-        :root { --primary: #722ed1; --bg: #f0f2f5; --text: #1f2937; --danger: #ff4d4f; }
+        :root { --primary: #1890ff; --bg: #f4f7f9; --text: #1f2937; --danger: #ff4d4f; --accent: #722ed1; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
-        .container { max-width: 900px; margin: auto; }
+        .container { max-width: 950px; margin: auto; }
         
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; gap: 10px; flex-wrap: wrap; }
         .btn-group { display: flex; gap: 10px; }
         
-        button { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; }
-        .add-btn { background: var(--primary); color: white; }
+        button { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .add-btn { background: var(--accent); color: white; }
         .print-mode-btn { background: #fa8c16; color: white; }
         .do-print-btn { background: #52c41a; color: white; display: none; }
         
         .chapter-section { background: white; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; overflow: hidden; }
         
         .chapter-banner { 
-            background: #f8fafc; 
-            padding: 18px 25px; 
-            font-size: 1.2rem; 
-            font-weight: 800; 
-            color: var(--primary); 
-            border-bottom: 1px solid #f1f5f9; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            cursor: pointer; 
-            user-select: none;
-            transition: background 0.2s;
+            background: #f8fafc; padding: 18px 25px; font-size: 1.2rem; font-weight: 800; 
+            color: var(--primary); border-bottom: 1px solid #f1f5f9; display: flex; 
+            align-items: center; gap: 12px; cursor: pointer; user-select: none;
         }
-        .chapter-banner:hover { background: #f1f5f9; }
         
         .fold-icon { margin-left: auto; transition: transform 0.3s; font-size: 0.9rem; opacity: 0.5; }
         .chapter-section.folded .fold-icon { transform: rotate(-90deg); }
         .chapter-section.folded .knowledge-container { display: none; }
-        .chapter-section.folded { margin-bottom: 10px; }
 
         .knowledge-container { padding: 5px 25px; }
         
         .knowledge-item { 
-            padding: 20px 0; 
-            border-bottom: 1px solid #f1f5f9; 
-            display: flex; 
-            align-items: flex-start; 
-            gap: 15px;
-            width: 100%;
+            padding: 20px 0; border-bottom: 1px solid #f1f5f9; display: flex; 
+            align-items: flex-start; gap: 15px; width: 100%;
         }
         .knowledge-item:last-child { border-bottom: none; }
         
-        .content-display { 
-            font-size: 1.1rem; 
-            flex: 1; 
-            min-width: 0; 
-            white-space: normal; 
-            word-wrap: break-word;
-            line-height: 1.6;
-        }
-
-        mjx-container {
-            width: 100% !important;
-            margin: 5px 0 !important;
-            white-space: normal !important;
-        }
+        .content-display { font-size: 1.1rem; flex: 1; min-width: 0; line-height: 1.6; }
 
         .item-actions { display: flex; gap: 5px; flex-shrink: 0; align-self: flex-start; padding-top: 5px; } 
         .action-btn { background: #fff; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
@@ -91,10 +64,7 @@
         body.selection-mode .item-actions, body.selection-mode .add-btn { display: none; }
         body.selection-mode .do-print-btn { display: inline-block; }
 
-        .preview-box { 
-            margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px dashed #722ed1; 
-            min-height: 60px; width: 100%; box-sizing: border-box;
-        }
+        .preview-box { margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px dashed var(--accent); min-height: 60px; width: 100%; box-sizing: border-box; }
 
         @media print {
             body { background: white; padding: 0; }
@@ -110,7 +80,7 @@
 
 <div class="container">
     <div class="header">
-        <h1>Knowledge Bank</h1>
+        <h1>AST Knowledge Bank</h1>
         <div class="btn-group">
             <button class="add-btn" onclick="openModal()">+ Add New</button>
             <button class="print-mode-btn" id="toggleSelectBtn" onclick="toggleSelectionMode()">Select to Print</button>
@@ -120,7 +90,7 @@
     <div id="knowledgeLibrary"></div>
 </div>
 
-<div id="editModal" class="modal-overlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000;">
+<div id="editModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000;">
     <div style="background: white; width: 600px; max-width: 95%; border-radius: 16px; padding: 30px; box-sizing: border-box;">
         <h3 id="modalTitle">Knowledge Editor</h3>
         <input type="hidden" id="editTargetId">
@@ -143,15 +113,14 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+    // Your AST Firebase Config
     const firebaseConfig = {
-        apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
-        authDomain: "ap-math-8783b.firebaseapp.com",
-        projectId: "ap-math-8783b",
-        storageBucket: "ap-math-8783b.firebasestorage.app",
-        messagingSenderId: "357604958030",
-        appId: "1:357604958030:web:b4bcd12bc9cccfefd6081f"
+        apiKey: "AIzaSyC_5NX6W0yZY8INI1gtRoMiBRZD28qJ7dE",
+        authDomain: "uestc-4720a.firebaseapp.com",
+        projectId: "uestc-4720a",
+        appId: "1:937055851089:web:0a0fcd9b547b9daa7c9e70"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -166,19 +135,16 @@
     }
 
     async function fetchData() {
+        // Categories
         const catSnap = await getDocs(collection(db, "Category"));
         const allCats = catSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const root = allCats.find(c => c.name && c.name.toLowerCase().includes("chapter") && !c.parent);
         
-        if (root) {
-            chapters = allCats.filter(c => {
-                const pid = (c.parent && typeof c.parent === 'object') ? c.parent.id : c.parent;
-                return pid === root.id;
-            }).sort((a, b) => (a.order || 0) - (b.order || 0));
-        }
+        // AST usually has a root category. We filter for sub-chapters.
+        chapters = allCats.filter(c => c.parent).sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        const knoSnap = await getDocs(collection(db, "Knowledge"));
-        knowledgeBase = knoSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        // Knowledge
+        const knSnap = await getDocs(collection(db, "Knowledge"));
+        knowledgeBase = knSnap.docs.map(d => ({ id: d.id, ...d.data() }))
                                     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
         document.getElementById('chapSelect').innerHTML = chapters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -190,6 +156,8 @@
 
         chapters.forEach(chap => {
             const items = knowledgeBase.filter(k => k.categoryId === chap.id);
+            if (items.length === 0) return;
+
             const section = document.createElement('div');
             section.className = "chapter-section";
             section.id = `sec-${chap.id}`;
@@ -197,13 +165,13 @@
             let itemsHtml = items.map(item => `
                 <div class="knowledge-item" id="item-${item.id}">
                     <input type="checkbox" class="print-checkbox item-check" data-chap="${chap.id}" 
-                           onclick="event.stopPropagation()" onchange="syncPrintClass('${item.id}')">
+                           onchange="syncPrintClass('${item.id}')">
                     <div class="content-display">$${item.latex}$</div>
                     <div class="item-actions">
-                        <button class="action-btn" onclick="event.stopPropagation(); moveItem('${item.id}', -1)">↑</button>
-                        <button class="action-btn" onclick="event.stopPropagation(); moveItem('${item.id}', 1)">↓</button>
-                        <button class="action-btn" onclick="event.stopPropagation(); openEditModal('${item.id}')">Edit</button>
-                        <button class="action-btn delete-btn" onclick="event.stopPropagation(); deleteItem('${item.id}')">Del</button>
+                        <button class="action-btn" onclick="moveItem('${item.id}', -1)">↑</button>
+                        <button class="action-btn" onclick="moveItem('${item.id}', 1)">↓</button>
+                        <button class="action-btn" onclick="openEditModal('${item.id}')">Edit</button>
+                        <button class="action-btn delete-btn" onclick="deleteItem('${item.id}')">Del</button>
                     </div>
                 </div>
             `).join('');
@@ -215,44 +183,35 @@
                     ${chap.name}
                     <span class="fold-icon">▼</span>
                 </div>
-                <div class="knowledge-container">${itemsHtml || '<p style="color:#999; padding:15px;">No items yet.</p>'}</div>
+                <div class="knowledge-container">${itemsHtml}</div>
             `;
             lib.appendChild(section);
         });
+
         if (window.MathJax) MathJax.typesetPromise();
     }
 
-    // --- Interaction Functions ---
-    window.toggleFold = (chapId) => {
-        const el = document.getElementById(`sec-${chapId}`);
-        el.classList.toggle('folded');
-    };
+    window.toggleFold = (chapId) => document.getElementById(`sec-${chapId}`).classList.toggle('folded');
 
     window.toggleSelectionMode = () => {
-        const body = document.body;
-        const btn = document.getElementById('toggleSelectBtn');
-        body.classList.toggle('selection-mode');
-        btn.innerText = body.classList.contains('selection-mode') ? "Cancel Selection" : "Select to Print";
+        document.body.classList.toggle('selection-mode');
+        document.getElementById('toggleSelectBtn').innerText = 
+            document.body.classList.contains('selection-mode') ? "Cancel Selection" : "Select to Print";
     };
 
     window.toggleChapterItems = (chapId, isChecked) => {
         const checkboxes = document.querySelectorAll(`.item-check[data-chap="${chapId}"]`);
         checkboxes.forEach(cb => {
             cb.checked = isChecked;
-            const itemId = cb.closest('.knowledge-item').id.replace('item-', '');
-            syncPrintClass(itemId);
+            syncPrintClass(cb.closest('.knowledge-item').id.replace('item-', ''));
         });
     };
 
     window.syncPrintClass = (itemId) => {
         const el = document.getElementById(`item-${itemId}`);
-        const cb = el.querySelector('.item-check');
         const section = el.closest('.chapter-section');
-        if (cb.checked) el.classList.add('selected-for-print');
-        else el.classList.remove('selected-for-print');
-        const hasAny = section.querySelectorAll('.selected-for-print').length > 0;
-        if (hasAny) section.classList.add('has-selected-items');
-        else section.classList.remove('has-selected-items');
+        el.classList.toggle('selected-for-print', el.querySelector('.item-check').checked);
+        section.classList.toggle('has-selected-items', section.querySelectorAll('.selected-for-print').length > 0);
     };
 
     window.executePrint = () => {
@@ -291,14 +250,16 @@
         const id = document.getElementById('editTargetId').value;
         const latex = document.getElementById('latexInput').value;
         const catId = document.getElementById('chapSelect').value;
-        if (id) await updateDoc(doc(db, "Knowledge", id), { latex: latex, categoryId: catId });
-        else await addDoc(collection(db, "Knowledge"), { latex: latex, categoryId: catId, order: knowledgeBase.length, createdAt: new Date() });
+        if (id) await updateDoc(doc(db, "Knowledge", id), { latex, categoryId: catId });
+        else await addDoc(collection(db, "Knowledge"), { 
+            latex, categoryId: catId, order: knowledgeBase.length * 10, createdAt: new Date() 
+        });
         closeModal();
         await init();
     };
 
     window.deleteItem = async (id) => {
-        if (confirm("Are you sure you want to remove this knowledge item?")) {
+        if (confirm("Delete this item?")) {
             await deleteDoc(doc(db, "Knowledge", id));
             await init();
         }
@@ -308,10 +269,17 @@
         const idx = knowledgeBase.findIndex(k => k.id === id);
         const targetIdx = idx + direction;
         if (targetIdx < 0 || targetIdx >= knowledgeBase.length) return;
+        
         const current = knowledgeBase[idx];
         const swap = knowledgeBase[targetIdx];
-        await updateDoc(doc(db, "Knowledge", current.id), { order: targetIdx });
-        await updateDoc(doc(db, "Knowledge", swap.id), { order: idx });
+        
+        // Swap orders in database
+        const oldOrder = current.order || 0;
+        const newOrder = swap.order || 0;
+        
+        await updateDoc(doc(db, "Knowledge", current.id), { order: newOrder });
+        await updateDoc(doc(db, "Knowledge", swap.id), { order: oldOrder });
+        
         await init();
     };
 
