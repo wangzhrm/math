@@ -21,7 +21,9 @@
     <style>
         :root { --primary: #1890ff; --bg: #f4f7f9; --text: #1f2937; --danger: #ff4d4f; --accent: #722ed1; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
-        .container { max-width: 950px; margin: auto; }
+        
+        /* Increased container width to prevent crowding */
+        .container { max-width: 1200px; margin: auto; }
         
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; gap: 10px; flex-wrap: wrap; }
         .btn-group { display: flex; gap: 10px; }
@@ -54,7 +56,17 @@
         
         .content-display { font-size: 1.1rem; flex: 1; min-width: 0; line-height: 1.6; }
 
-        .item-actions { display: flex; gap: 5px; flex-shrink: 0; align-self: flex-start; padding-top: 5px; } 
+        /* Modified actions to stay above content and remain clickable */
+        .item-actions { 
+            display: flex; 
+            gap: 5px; 
+            flex-shrink: 0; 
+            align-self: flex-start; 
+            padding-top: 5px;
+            position: relative;
+            z-index: 10;
+            background: white; /* Ensures buttons aren't visually obscured by lines */
+        } 
         .action-btn { background: #fff; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
         .action-btn:hover { background: #f3f4f6; }
         .delete-btn:hover { border-color: var(--danger); color: var(--danger); }
@@ -135,14 +147,10 @@
     }
 
     async function fetchData() {
-        // Categories
         const catSnap = await getDocs(collection(db, "Category"));
         const allCats = catSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        
-        // AST usually has a root category. We filter for sub-chapters.
         chapters = allCats.filter(c => c.parent).sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        // Knowledge
         const knSnap = await getDocs(collection(db, "Knowledge"));
         knowledgeBase = knSnap.docs.map(d => ({ id: d.id, ...d.data() }))
                                     .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -273,7 +281,6 @@
         const current = knowledgeBase[idx];
         const swap = knowledgeBase[targetIdx];
         
-        // Swap orders in database
         const oldOrder = current.order || 0;
         const newOrder = swap.order || 0;
         
