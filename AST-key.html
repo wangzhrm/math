@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AST Knowledge</title>
+    <title>AST Knowledge Mapper</title>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, doc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, doc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC_5NX6W0yZY8INI1gtRoMiBRZD28qJ7dE",
@@ -20,23 +20,19 @@
         let allFetchedQuestions = []; 
         let allKnowledge = []; 
 
-        window.attemptLogin = async () => {
-            const u = document.getElementById('userInput').value;
-            const p = document.getElementById('passInput').value;
+        // Start app immediately without login
+        async function init() {
             try {
-                const q = query(collection(db, "Master"), where("username", "==", u), where("password", "==", p));
-                const snap = await getDocs(q);
-                if (!snap.empty) {
-                    document.getElementById('login-overlay').style.display = 'none';
-                    document.getElementById('app-wrapper').style.display = 'flex';
-                    await loadFilters();
-                    await loadKnowledge(); 
-                    await loadQuestions();
-                } else { 
-                    document.getElementById('loginMsg').innerText = "Invalid credentials.";
-                }
-            } catch (err) { alert(err.message); }
-        };
+                await loadFilters();
+                await loadKnowledge(); 
+                await loadQuestions();
+                document.getElementById('app-wrapper').style.display = 'flex';
+                document.getElementById('loading-state').style.display = 'none';
+            } catch (err) {
+                console.error(err);
+                alert("Error loading data: " + err.message);
+            }
+        }
 
         async function loadFilters() {
             const snap = await getDocs(collection(db, "Category"));
@@ -84,12 +80,11 @@
             });
         }
 
-        /* FIXED: loadKnowledge now uses orderBy("order") to ensure sequence is correct */
         async function loadKnowledge() {
-            const q = query(collection(db, "Knowledge"), orderBy("order"));
-            const snap = await getDocs(q);
-            allKnowledge = [];
-            snap.forEach(d => allKnowledge.push({ id: d.id, ...d.data() }));
+            const snap = await getDocs(collection(db, "Knowledge"));
+            // Synchronized with Knowledge Bank logic to ensure full retrieval and correct sorting
+            allKnowledge = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                                   .sort((a, b) => (a.order || 0) - (b.order || 0));
         }
 
         window.loadQuestions = async () => {
@@ -208,7 +203,6 @@
             const catId = document.getElementById('knowCategory').value;
             if(!content || !catId) return alert("Please provide both LaTeX and a Chapter.");
             try {
-                // For new knowledge, order defaults to current timestamp if not specified
                 await addDoc(collection(db, "Knowledge"), { 
                     latex: content, 
                     categoryId: catId, 
@@ -296,7 +290,7 @@
             const list = document.getElementById('focus-question-list');
             list.innerHTML = "";
             const linkedQuestions = allFetchedQuestions.filter(q => q.knowledgeIds?.includes(kId));
-            linkedQuestions.forEach((qData, idx) => {
+            linkedQuestions.forEach((qData) => {
                 const card = document.createElement('div');
                 card.className = "q-card";
                 card.innerHTML = `<div class="q-body">${qData.latexQuestion}</div>`;
@@ -309,15 +303,21 @@
             document.getElementById('focus-view').style.display = 'none';
             document.getElementById('main-content-view').style.display = 'block';
         };
+
+        // Initialize on load
+        init();
+
     </script>
     <script>window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] } };</script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root { --primary: #1890ff; --success: #52c41a; --danger: #ff4d4f; }
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f4f7f9; }
+        #loading-state { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #888; }
         #app-wrapper { display: none; max-width: 1000px; margin: auto; padding: 20px; flex-direction: column; }
         .filter-panel { display: flex; gap: 15px; background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #e1e4e8; overflow-x: auto; }
-        .filter-select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; min-width: 140px; }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; min-width: 160px; }
         .q-card { border: 1px solid #e1e4e8; padding: 20px; margin-bottom: 20px; border-radius: 10px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .q-card-header { display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 15px; }
         .q-body { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
@@ -334,7 +334,6 @@
         .show-sol .sol-box { display: block !important; }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:6000; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
-        #login-overlay { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .floating-actions { position: fixed; right: 20px; bottom: 30px; display: flex; flex-direction: column; gap: 12px; z-index: 5000; }
         .floating-actions .primary-btn { box-shadow: 0 4px 12px rgba(0,0,0,0.2); min-width: 140px; }
         .search-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 10px 0; gap: 15px; }
@@ -342,16 +341,8 @@
     </style>
 </head>
 <body>
-    <div id="login-overlay">
-        <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 280px; text-align: center;">
-            <h2 style="margin-top:0">AST Math Knowledge Mapper</h2>
-            <input type="text" id="userInput" placeholder="Username" style="width:100%; padding:10px; margin:8px 0; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
-            <input type="password" id="passInput" placeholder="Password" style="width:100%; padding:10px; margin:8px 0; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
-            <button onclick="attemptLogin()" class="primary-btn" style="width:100%">Login</button>
-            <p id="loginMsg" style="color:var(--danger);"></p>
-        </div>
-    </div>
-    
+    <div id="loading-state">Loading AST Knowledge...</div>
+
     <div id="app-wrapper">
         <div id="main-content-view">
             <div class="floating-actions">
@@ -359,8 +350,7 @@
                 <button onclick="document.getElementById('knowModal').style.display='flex'" class="primary-btn" style="background:#722ed1">Add Knowledge</button>
             </div>
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h1 style="margin:0;">Knoweldge Mapper</h1>
-                <button class="primary-btn" style="background:var(--danger);" onclick="location.reload()">Logout</button>
+                <h1 style="margin:0;">Knowledge Mapper</h1>
             </div>
             <div class="filter-panel" id="filterPanel"></div>
             <div style="display:flex; gap:12px; margin-bottom:20px; align-items: center; flex-wrap: wrap;">
