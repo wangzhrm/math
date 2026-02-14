@@ -15,6 +15,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        /* Added 'query' and 'orderBy' to imports */
         import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, orderBy, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -36,6 +37,7 @@
         }
 
         window.onload = async () => {
+            // Chapters fetch
             const catSnap = await getDocs(collection(db, "Category"));
             chapters = catSnap.docs.map(d => ({id: d.id, ...d.data()}));
             const select = document.getElementById('chapterSelect');
@@ -43,7 +45,8 @@
                 select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
             });
 
-            const kSnap = await getDocs(collection(db, "Knowledge"));
+            /* FIXED: Fetch knowledge with orderBy("order") */
+            const kSnap = await getDocs(query(collection(db, "Knowledge"), orderBy("order")));
             knowledgeLib = kSnap.docs.map(d => ({id: d.id, ...d.data()}));
 
             const qSnap = await getDocs(collection(db, "MathQuestion"));
@@ -55,6 +58,8 @@
         window.addKnowledgeBlock = async (preData = null) => {
             const chapterId = document.getElementById('chapterSelect').value;
             if (!chapterId) return alert("Select a Chapter first!");
+            
+            /* The knowledgeLib is already sorted from onload, so filteredK will be sorted too */
             const filteredK = knowledgeLib.filter(k => k.categoryId === chapterId);
             const blockId = preData ? preData.blockId : Date.now() + Math.random();
             
@@ -128,9 +133,9 @@
                 } else {
                     payload.order = Date.now();
                     const newDoc = await addDoc(collection(db, "Lectures"), payload);
-                    currentLectureId = newDoc.id; // Retain ID so user can continue editing
+                    currentLectureId = newDoc.id;
                 }
-                alert("Saved to Database! You can continue editing.");
+                alert("Saved to Database!");
             } catch (e) { alert("Error: " + e.message); }
         };
 
