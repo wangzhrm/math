@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Creator Pro - Compact View</title>
+    
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+            options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, orderBy, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC_5NX6W0yZY8INI1gtRoMiBRZD28qJ7dE",
+            authDomain: "uestc-4720a.firebaseapp.com",
+            projectId: "uestc-4720a",
+            appId: "1:937055851089:web:0a0fcd9b547b9daa7c9e70"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let chapters = [], knowledgeLib = [], questionLib = [], currentLectureId = null;
+
+        async function renderMath(element) {
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                await window.MathJax.typesetPromise([element]);
+            }
+        }
+
+        window.onload = async () => {
+            const catSnap = await getDocs(collection(db, "Category"));
+            chapters = catSnap.docs.map(d => ({id: d.id, ...d.data()}));
+            const select = document.getElementById('chapterSelect');
+            chapters.filter(c => c.parent).forEach(c => {
+                select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+
+            const kSnap = await getDocs(collection(db, "Knowledge"));
+            knowledgeLib = kSnap.docs.map(d => ({id: d.id, ...d.data()}));
+
+            const qSnap = await getDocs(collection(db, "MathQuestion"));
+            questionLib = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
+
+            setupRealtimeListeners();
+        };
+
+        window.addKnowledgeBlock = async (preData = null) => {
+            const chapterId = document.getElementById('chapterSelect').value;
+            if (!chapterId) return alert("Select a Chapter first!");
+            const filteredK = knowledgeLib.filter(k => k.categoryId === chapterId);
+            const blockId = preData ? preData.blockId : Date.now();
+            
+            const div = document.createElement('div');
+            div.className = 'knowledge-block';
+            div.id = `block-${blockId}`;
+            div.innerHTML = `
+                <div class="block-header"><h3>Knowledge Block</h3><button class="danger-btn btn-sm" onclick="this.closest('.knowledge-block').remove()">Remove Block</button></div>
+                
+                <p class="step-label">Select Knowledge Point (Compact View):</p>
+                <div class="visual-picker-list compact-list" id="k-list-${blockId}">
+                    ${filteredK.map(k => `<div class="row-card compact-card" onclick="selectK('${blockId}','${k.id}')"><div class="card-content">$${k.latex}$</div></div>`).join('')}
+                </div>
+
+                <div id="selected-k-${blockId}" class="selected-display" data-kid="${preData ? preData.knowledgeId : ''}"></div>
+                
+                <div id="q-section-${blockId}" style="display:${preData ? 'block' : 'none'};">
+                    <p class="step-label">Select Questions:</p>
+                    <div class="visual-picker-list" id="q-picker-${blockId}"></div>
+                    <div id="q-container-${blockId}" class="q-stack"></div>
+                </div>
+            `;
+            document.getElementById('dynamicContent').appendChild(div);
+            
+            if(preData) {
+                await selectK(blockId, preData.knowledgeId);
+                for(let qId of preData.questionIds) { await addQ(blockId, qId); }
+            }
+            renderMath(div);
+        };
+
+        window.selectK = async (blockId, kId) => {
+            const k = knowledgeLib.find(item => item.id === kId);
+            const display = document.getElementById(`selected-k-${blockId}`);
+            display.innerHTML = `<div class="solution-box active-k-box"><strong>Selected:</strong> $${k.latex}$</div>`;
+            display.dataset.kid = kId;
+
+            const relatedQs = questionLib.filter(q => q.knowledgeIds?.includes(kId));
+            const qPicker = document.getElementById(`q-picker-${blockId}`);
+            qPicker.innerHTML = relatedQs.map(q => `<div class="row-card q-row" onclick="addQ('${blockId}','${q.id}')">${q.latexQuestion}</div>`).join('');
+            document.getElementById(`q-section-${blockId}`).style.display = 'block';
+            renderMath(qPicker); renderMath(display);
+        };
+
+        window.addQ = async (blockId, qId) => {
+            const q = questionLib.find(item => item.id === qId);
+            const container = document.getElementById(`q-container-${blockId}`);
+            if (container.querySelector(`[data-qid="${qId}"]`)) return;
+            const qDiv = document.createElement('div');
+            qDiv.className = 'exercise-container added-q';
+            qDiv.dataset.qid = qId;
+            qDiv.innerHTML = `<div style="display:flex;justify-content:space-between;"><span class="question">Practice</span><button class="danger-btn btn-sm" onclick="this.parentElement.parentElement.remove()">X</button></div>
+                              <div style="margin-top:10px;">${q.latexQuestion}</div><div class="solution-box sol-box-dark"><span class="solution-title">Solution</span>${q.latexSolution}</div>`;
+            container.appendChild(qDiv);
+            renderMath(qDiv);
+        };
+
+        window.saveToFirestore = async () => {
+            const title = document.getElementById('lectureTitle').value;
+            const chapterId = document.getElementById('chapterSelect').value;
+            const concepts = document.getElementById('conceptsInput').value;
+            if(!title || !chapterId) return alert("Please fill Title and Chapter!");
+
+            const contentArr = [];
+            document.querySelectorAll('.knowledge-block').forEach(block => {
+                const kId = block.querySelector('.selected-display').dataset.kid;
+                const qIds = Array.from(block.querySelectorAll('.added-q')).map(q => q.dataset.qid);
+                if(kId) contentArr.push({ knowledgeId: kId, questionIds: qIds });
+            });
+
+            try {
+                const payload = { title, chapterId, conceptsText: concepts, content: contentArr, updatedAt: new Date() };
+                if (currentLectureId) await setDoc(doc(db, "Lectures", currentLectureId), payload, { merge: true });
+                else { payload.order = Date.now(); await addDoc(collection(db, "Lectures"), payload); }
+                alert("Saved to Database!"); location.reload();
+            } catch (e) { alert("Error: " + e.message); }
+        };
+
+        window.loadLecture = async (id) => {
+            const docSnap = await getDoc(doc(db, "Lectures", id));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                currentLectureId = id;
+                document.getElementById('lectureTitle').value = data.title;
+                document.getElementById('chapterSelect').value = data.chapterId;
+                document.getElementById('conceptsInput').value = data.conceptsText || "";
+                document.getElementById('dynamicContent').innerHTML = "";
+                for(let item of data.content) {
+                    await addKnowledgeBlock({ knowledgeId: item.knowledgeId, questionIds: item.questionIds, blockId: Date.now() + Math.random() });
+                }
+            }
+        };
+
+        function setupRealtimeListeners() {
+            onSnapshot(query(collection(db, "Lectures"), orderBy("order")), (snap) => {
+                const list = document.getElementById('lectureList');
+                list.innerHTML = "";
+                snap.forEach(d => {
+                    const div = document.createElement('div');
+                    div.className = "list-item";
+                    div.innerText = d.data().title;
+                    div.onclick = () => loadLecture(d.id);
+                    list.appendChild(div);
+                });
+            });
+        }
+
+        window.togglePreview = async () => {
+            const panel = document.getElementById('previewPanel');
+            const content = document.getElementById('previewContent');
+            if(panel.classList.contains('open')) {
+                panel.classList.remove('open');
+            } else {
+                panel.classList.add('open');
+                const title = document.getElementById('lectureTitle').value || "Lecture Preview";
+                const rawConcepts = document.getElementById('conceptsInput').value;
+                const formattedConcepts = rawConcepts.replace(/\n/g, '<br>');
+
+                let dynamicHtml = "";
+                document.querySelectorAll('.knowledge-block').forEach(block => {
+                    const kHtml = block.querySelector('.selected-display').innerHTML;
+                    let qHtml = "";
+                    block.querySelectorAll('.added-q').forEach(q => {
+                        const clone = q.cloneNode(true);
+                        clone.querySelectorAll('button').forEach(b => b.remove());
+                        qHtml += `<div class="exercise-container">${clone.innerHTML}</div>`;
+                    });
+                    dynamicHtml += `<div class="slide">${kHtml}${qHtml}</div>`;
+                });
+
+                content.innerHTML = `<header><h1>${title}</h1></header><div class="slide"><h3>Concepts</h3><div class="text-concept-body">${formattedConcepts}</div></div>${dynamicHtml}`;
+                renderMath(content);
+            }
+        };
+
+        window.exportHTML = () => {
+            const title = document.getElementById('lectureTitle').value || "Lecture";
+            const bodyContent = document.getElementById('previewContent').innerHTML;
+            const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+            <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async><\/script>
+            <style>
+                body { font-family: sans-serif; line-height: 1.6; max-width: 1100px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+                header { background: #2c3e50; color: white; padding: 40px; text-align: center; border-radius: 8px; margin-bottom: 30px; }
+                .slide { background: white; padding: 30px; margin-top: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 8px solid #34495e; }
+                /* LIGHT GREEN STYLE FOR EXPORTED KNOWLEDGE BOX */
+                .active-k-box { background: #f6ffed !important; border-left: 5px solid #52c41a !important; padding: 15px; margin-bottom: 15px; font-size: 0.9rem; }
+                .exercise-container { background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 8px; border: 1px solid #dee2e6; }
+                .question { font-weight: bold; background: #34495e; color: white; padding: 4px 12px; border-radius: 4px; }
+                .solution-box { background: #ced4da; border-left: 5px solid #2c3e50; padding: 15px; margin-top: 15px; }
+            </style>
+            <script>window.MathJax = { tex: { inlineMath: [['$', '$']] } };<\/script>
+            </head><body>${bodyContent}</body></html>`;
+
+            const blob = new Blob([fullHtml], { type: 'text/html' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${title}.html`;
+            link.click();
+        };
+    </script>
+
+    <style>
+        :root { --primary: #2c3e50; --bg: #f4f7f9; --accent: #1890ff; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
+        
+        #sidebar { width: 250px; background: white; border-right: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; }
+        #lectureList { flex: 1; overflow-y: auto; margin-top: 15px; }
+        .list-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.85rem; }
+        .list-item:hover { background: #f0faff; color: var(--accent); }
+
+        #editor { flex: 1; overflow-y: auto; padding: 40px; position: relative; }
+        
+        .compact-list { 
+            max-height: 550px !important; 
+            display: grid !important;
+            grid-template-columns: 1fr 1fr; 
+            gap: 8px !important;
+            background: #eee !important;
+        }
+        .compact-card {
+            padding: 8px 12px !important; 
+            font-size: 0.8rem !important;  
+            margin: 0 !important;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+        .compact-card .card-content { line-height: 1.2; }
+
+        .slide-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px; border-top: 6px solid var(--primary); }
+        .knowledge-block { background: white; padding: 30px; border-radius: 15px; border-left: 10px solid var(--accent); margin-bottom: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        
+        textarea, input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .visual-picker-list { display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding: 12px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; margin: 10px 0; }
+        .row-card { background: white; border: 1px solid #ddd; padding: 12px; border-radius: 6px; cursor: pointer; }
+        .row-card:hover { border-color: var(--accent); background: #f0faff; }
+        .q-row { border-left: 5px solid #faad14; }
+
+        .exercise-container { background: #f1f1f1; padding: 20px; margin: 15px 0; border-radius: 8px; border: 1px solid #ddd; }
+        .active-k-box { border-left: 5px solid #52c41a; background: #f6ffed; padding: 15px; margin-bottom: 15px; font-size: 0.9rem; }
+        
+        .sol-box-dark { background: #ced4da !important; }
+        .solution-box { border-left: 5px solid var(--primary); padding: 15px; margin-top: 15px; }
+        
+        .step-label { font-weight: bold; color: #666; font-size: 0.75rem; text-transform: uppercase; margin-top: 15px; }
+
+        .editor-footer { text-align: center; padding: 40px 0 120px 0; border-top: 1px solid #ddd; margin-top: 40px; }
+        .save-btn { background: #1890ff; color: white; border: none; padding: 18px 60px; font-weight: bold; cursor: pointer; border-radius: 8px; font-size: 1.1rem; }
+        
+        #previewPanel { position: fixed; right: -900px; top: 0; width: 850px; height: 100vh; background: #f0f2f5; box-shadow: -5px 0 15px rgba(0,0,0,0.2); transition: 0.4s ease; z-index: 1000; display: flex; flex-direction: column; }
+        #previewPanel.open { right: 0; }
+        #previewTab { position: fixed; right: 0; top: 50%; transform: translateY(-50%); width: 40px; height: 160px; background: var(--primary); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: mixed; border-radius: 10px 0 0 10px; z-index: 1001; font-weight: bold; }
+        #previewContent { flex: 1; overflow-y: auto; padding: 40px; }
+        .preview-footer { padding: 25px; background: white; border-top: 1px solid #ddd; text-align: center; }
+        .export-btn { background: #52c41a; color: white; border: none; padding: 15px 50px; font-weight: bold; cursor: pointer; border-radius: 6px; }
+
+        .primary-btn { background: var(--primary); color: white; border: none; padding: 12px; cursor: pointer; border-radius: 6px; width: 100%; }
+        .danger-btn { background: #ff4d4f; color: white; border: none; padding: 4px 8px; cursor: pointer; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3>My Lectures</h3>
+    <button class="primary-btn" onclick="location.reload()">+ Create New</button>
+    <div id="lectureList"></div>
+</div>
+
+<div id="editor">
+    <div class="slide-card">
+        <h2>Lecture Configuration</h2>
+        <select id="chapterSelect" onchange="document.getElementById('dynamicContent').innerHTML=''"><option value="">-- Choose Chapter --</option></select>
+        <input type="text" id="lectureTitle" placeholder="Webpage Title">
+        <textarea id="conceptsInput" rows="5" placeholder="Concepts & Meanings (Plain Text)"></textarea>
+    </div>
+
+    <div id="dynamicContent"></div>
+
+    <div class="editor-footer">
+        <button class="primary-btn" onclick="addKnowledgeBlock()" style="background:#52c41a; width: 400px; margin-bottom: 25px;">+ Add New Chapter Block</button>
+        <br>
+        <button class="save-btn" onclick="saveToFirestore()">SAVE DATA TO DATABASE</button>
+    </div>
+</div>
+
+<div id="previewTab" onclick="togglePreview()">L I V E &nbsp; P R E V I E W</div>
+
+<div id="previewPanel">
+    <div style="padding: 15px; background: white; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+        <strong>Preview Window</strong>
+        <button class="danger-btn" onclick="togglePreview()">Close</button>
+    </div>
+    <div id="previewContent"></div>
+    <div class="preview-footer">
+        <button class="export-btn" onclick="exportHTML()">EXPORT AS HTML</button>
+    </div>
+</div>
+
+</body>
+</html>
