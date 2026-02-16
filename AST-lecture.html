@@ -7,11 +7,21 @@
     
     <script>
         window.MathJax = {
-            tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
-            options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] }
+            tex: {
+                inlineMath: [['$', '$']],
+                displayMath: [['$$', '$$']],
+                // Explicitly loading ams for \boldsymbol support
+                packages: {'[+]': ['ams']}
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            },
+            loader: {
+                load: ['[tex]/ams']
+            }
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" id="MathJax-script" async></script>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -36,23 +46,18 @@
         }
 
         window.onload = async () => {
-            // 1. Fetch Chapters
             const catSnap = await getDocs(collection(db, "Category"));
             chapters = catSnap.docs.map(d => ({id: d.id, ...d.data()}));
             
             const select = document.getElementById('chapterSelect');
-            // Sort chapters by order
             chapters.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach(c => {
                 select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
             });
 
-            // 2. Fetch Knowledge - MATCHING REFERENCE WEBPAGE LOGIC EXACTLY
-            // Fetch all, map, then sort client-side to ensure consistency
             const kSnap = await getDocs(collection(db, "Knowledge"));
             knowledgeLib = kSnap.docs.map(d => ({id: d.id, ...d.data()}))
                                      .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-            // 3. Fetch Questions
             const qSnap = await getDocs(collection(db, "MathQuestion"));
             questionLib = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
 
@@ -63,18 +68,13 @@
             const chapterId = document.getElementById('chapterSelect').value;
             if (!chapterId) return alert("Select a Chapter first!");
             
-            // FIXED LOGIC: Find direct matches + children matches (handling string parent IDs)
             const childIds = chapters.filter(c => {
                 if (!c.parent) return false;
-                // Check if parent is just a string ID (common) OR an object with .id
                 const pId = (typeof c.parent === 'string') ? c.parent : c.parent.id;
                 return pId === chapterId;
             }).map(c => c.id);
 
-            // Combine selected ID and any found child IDs
             const targetIds = [chapterId, ...childIds];
-
-            // Filter knowledge based on this inclusive list
             const filteredK = knowledgeLib.filter(k => targetIds.includes(k.categoryId));
             
             const blockId = preData ? preData.blockId : Date.now() + Math.random();
@@ -126,15 +126,24 @@
             const q = questionLib.find(item => item.id === qId);
             const container = document.getElementById(`q-container-${blockId}`);
             if (container.querySelector(`[data-qid="${qId}"]`)) return;
+
+            const graphHtml = q.diagramUrl 
+                ? `<div class="q-graph-container" style="text-align:center; margin-top:10px;">
+                     <img src="${q.diagramUrl}" style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px;">
+                   </div>`
+                : '';
+
             const qDiv = document.createElement('div');
             qDiv.className = 'exercise-container added-q';
             qDiv.dataset.qid = qId;
+            
             qDiv.innerHTML = `
                 <div style="display:flex;justify-content:space-between;">
                     <span class="question">Practice</span>
                     <button class="danger-btn btn-sm" onclick="this.parentElement.parentElement.remove()">X</button>
                 </div>
-                <div style="margin-top:10px;">${q.latexQuestion}</div>
+                <div class="q-content" style="margin-top:10px;">${q.latexQuestion}</div>
+                ${graphHtml}
                 <div class="solution-box sol-box-dark"><span class="solution-title">Solution</span>${q.latexSolution}</div>`;
             container.appendChild(qDiv);
             renderMath(qDiv);
@@ -238,11 +247,17 @@
                 
                 let qHtml = "";
                 block.querySelectorAll('.added-q').forEach(q => {
-                    const qText = q.querySelector('div:nth-of-type(2)').innerHTML;
+                    const qTextEl = q.querySelector('.q-content') || q.querySelector('div:nth-of-type(2)');
+                    const qText = qTextEl.innerHTML;
                     const solText = q.querySelector('.solution-box').innerHTML;
+                    
+                    const graphEl = q.querySelector('.q-graph-container');
+                    const graphHtml = graphEl ? graphEl.outerHTML : "";
+
                     qHtml += `<div class="exercise-container">
                                 <span class="question">Practice</span>
                                 <div style="margin-top:10px;">${qText}</div>
+                                ${graphHtml}
                                 <button class="sol-btn" onclick="toggleSol(this)">Show Solution</button>
                                 <div class="solution-box sol-box-dark" style="display:none;">${solText}</div>
                               </div>`;
@@ -251,7 +266,13 @@
             });
 
             const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
-            <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async><\/script>
+            <script>
+                window.MathJax = {
+                    tex: { inlineMath: [['$', '$']], packages: {'[+]': ['ams']} },
+                    loader: { load: ['[tex]/ams'] }
+                };
+            <\/script>
+            <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" async><\/script>
             <style>
                 body { font-family: sans-serif; line-height: 1.6; max-width: 1100px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
                 header { background: #2c3e50; color: white; padding: 40px; text-align: center; border-radius: 8px; margin-bottom: 30px; }
@@ -261,9 +282,9 @@
                 .question { font-weight: bold; background: #34495e; color: white; padding: 4px 12px; border-radius: 4px; }
                 .solution-box { background: #ced4da; border-left: 5px solid #2c3e50; padding: 15px; margin-top: 15px; }
                 .sol-btn { background: #1890ff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; font-weight: bold; }
+                .q-graph-container img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
             </style>
             <script>
-                window.MathJax = { tex: { inlineMath: [['$', '$']] } };
                 function toggleSol(btn) {
                     const box = btn.nextElementSibling;
                     if(box.style.display === "none") { box.style.display = "block"; btn.innerText = "Hide Solution"; }
