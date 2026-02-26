@@ -10,7 +10,6 @@
             tex: {
                 inlineMath: [['$', '$']],
                 displayMath: [['$$', '$$']],
-                // Explicitly loading ams for \boldsymbol support
                 packages: {'[+]': ['ams']}
             },
             options: {
@@ -167,7 +166,11 @@
                 if (currentLectureId) {
                     await setDoc(doc(db, "Lectures", currentLectureId), payload, { merge: true });
                 } else {
-                    payload.order = Date.now();
+                    // Logic to ensure new lectures go to the bottom of the order
+                    const q = query(collection(db, "Lectures"), orderBy("order", "desc"));
+                    const snap = await getDocs(q);
+                    const lastOrder = snap.empty ? 0 : snap.docs[0].data().order;
+                    payload.order = lastOrder + 1000;
                     const newDoc = await addDoc(collection(db, "Lectures"), payload);
                     currentLectureId = newDoc.id;
                 }
@@ -190,6 +193,29 @@
             }
         };
 
+        // NEW: Function to handle reordering lectures
+        window.moveLecture = async (id, direction, event) => {
+            event.stopPropagation(); // Stops sidebar from loading the lecture
+            const q = query(collection(db, "Lectures"), orderBy("order"));
+            const snap = await getDocs(q);
+            const docs = snap.docs;
+            const index = docs.findIndex(d => d.id === id);
+
+            let targetIndex = (direction === 'up') ? index - 1 : index + 1;
+
+            if (targetIndex >= 0 && targetIndex < docs.length) {
+                const currentDoc = docs[index];
+                const targetDoc = docs[targetIndex];
+                
+                const currentOrder = currentDoc.data().order;
+                const targetOrder = targetDoc.data().order;
+
+                // Swap order values in DB
+                await setDoc(doc(db, "Lectures", currentDoc.id), { order: targetOrder }, { merge: true });
+                await setDoc(doc(db, "Lectures", targetDoc.id), { order: currentOrder }, { merge: true });
+            }
+        };
+
         function setupRealtimeListeners() {
             onSnapshot(query(collection(db, "Lectures"), orderBy("order")), (snap) => {
                 const list = document.getElementById('lectureList');
@@ -197,7 +223,17 @@
                 snap.forEach(d => {
                     const div = document.createElement('div');
                     div.className = "list-item";
-                    div.innerText = d.data().title;
+                    div.style.display = "flex";
+                    div.style.justifyContent = "space-between";
+                    div.style.alignItems = "center";
+                    
+                    div.innerHTML = `
+                        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.data().title}</span>
+                        <div style="display: flex; gap: 5px; margin-left: 10px;">
+                            <button onclick="moveLecture('${d.id}', 'up', event)" style="padding: 2px 5px; cursor: pointer; border: 1px solid #ccc; background: #fff; border-radius: 3px; font-size: 10px;">▲</button>
+                            <button onclick="moveLecture('${d.id}', 'down', event)" style="padding: 2px 5px; cursor: pointer; border: 1px solid #ccc; background: #fff; border-radius: 3px; font-size: 10px;">▼</button>
+                        </div>
+                    `;
                     div.onclick = () => loadLecture(d.id);
                     list.appendChild(div);
                 });
