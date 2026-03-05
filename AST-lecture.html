@@ -166,7 +166,6 @@
                 if (currentLectureId) {
                     await setDoc(doc(db, "Lectures", currentLectureId), payload, { merge: true });
                 } else {
-                    // Logic to ensure new lectures go to the bottom of the order
                     const q = query(collection(db, "Lectures"), orderBy("order", "desc"));
                     const snap = await getDocs(q);
                     const lastOrder = snap.empty ? 0 : snap.docs[0].data().order;
@@ -193,9 +192,8 @@
             }
         };
 
-        // NEW: Function to handle reordering lectures
         window.moveLecture = async (id, direction, event) => {
-            event.stopPropagation(); // Stops sidebar from loading the lecture
+            event.stopPropagation();
             const q = query(collection(db, "Lectures"), orderBy("order"));
             const snap = await getDocs(q);
             const docs = snap.docs;
@@ -210,7 +208,6 @@
                 const currentOrder = currentDoc.data().order;
                 const targetOrder = targetDoc.data().order;
 
-                // Swap order values in DB
                 await setDoc(doc(db, "Lectures", currentDoc.id), { order: targetOrder }, { merge: true });
                 await setDoc(doc(db, "Lectures", targetDoc.id), { order: currentOrder }, { merge: true });
             }
@@ -274,7 +271,7 @@
             const formattedConcepts = rawConcepts.replace(/\n/g, '<br>');
             
             let exportBody = `<header><h1>${title}</h1></header>
-                             <div class="slide"><h3>Concepts</h3><div class="text-concept-body">${formattedConcepts}</div></div>`;
+                              <div class="slide"><h3>Concepts</h3><div class="text-concept-body">${formattedConcepts}</div></div>`;
 
             document.querySelectorAll('.knowledge-block').forEach(block => {
                 const kId = block.querySelector('.selected-display').dataset.kid;
@@ -283,20 +280,24 @@
                 
                 let qHtml = "";
                 block.querySelectorAll('.added-q').forEach(q => {
-                    const qTextEl = q.querySelector('.q-content') || q.querySelector('div:nth-of-type(2)');
-                    const qText = qTextEl.innerHTML;
-                    const solText = q.querySelector('.solution-box').innerHTML;
+                    const qId = q.dataset.qid;
+                    const qData = questionLib.find(item => item.id === qId);
                     
-                    const graphEl = q.querySelector('.q-graph-container');
-                    const graphHtml = graphEl ? graphEl.outerHTML : "";
+                    if (qData) {
+                        const graphHtml = qData.diagramUrl 
+                            ? `<div class="q-graph-container" style="text-align:center; margin-top:10px;">
+                                 <img src="${qData.diagramUrl}" style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px;">
+                               </div>`
+                            : '';
 
-                    qHtml += `<div class="exercise-container">
-                                <span class="question">Practice</span>
-                                <div style="margin-top:10px;">${qText}</div>
-                                ${graphHtml}
-                                <button class="sol-btn" onclick="toggleSol(this)">Show Solution</button>
-                                <div class="solution-box sol-box-dark" style="display:none;">${solText}</div>
-                              </div>`;
+                        qHtml += `<div class="exercise-container">
+                                    <span class="question">Practice</span>
+                                    <div style="margin-top:10px;">${qData.latexQuestion}</div>
+                                    ${graphHtml}
+                                    <button class="sol-btn" onclick="toggleSol(this)">Show Solution</button>
+                                    <div class="solution-box sol-box-dark" style="display:none;"><span class="solution-title">Solution</span><br>${qData.latexSolution}</div>
+                                  </div>`;
+                    }
                 });
                 exportBody += `<div class="slide">${kHtml}${qHtml}</div>`;
             });
@@ -304,7 +305,7 @@
             const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
             <script>
                 window.MathJax = {
-                    tex: { inlineMath: [['$', '$']], packages: {'[+]': ['ams']} },
+                    tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']], packages: {'[+]': ['ams']} },
                     loader: { load: ['[tex]/ams'] }
                 };
             <\/script>
@@ -332,7 +333,7 @@
             const blob = new Blob([fullHtml], { type: 'text/html' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `${title}.html`;
+            link.download = `${title.replace(/[^a-z0-9]/gi, '_')}.html`; 
             link.click();
         };
     </script>
