@@ -104,7 +104,6 @@
             
             if(preData) {
                 await selectK(blockId, preData.knowledgeId);
-                // Handle both new data structure (questions object) and old data structure (questionIds array)
                 let qArray = preData.questions || (preData.questionIds ? preData.questionIds.map(id => ({id, expr: ''})) : []);
                 for(let qObj of qArray) { await addQ(blockId, qObj.id, qObj.expr); }
             }
@@ -146,7 +145,7 @@
                 <textarea class="english-expressions" rows="2" placeholder="English expressions students need to master for full marks...">${expr}</textarea>
                 <div class="q-content" style="margin-top:10px;">${q.latexQuestion}</div>
                 ${graphHtml}
-                <div class="solution-box sol-box-dark"><span class="solution-title">Solution</span>${q.latexSolution}</div>`;
+                <div class="solution-box sol-box-dark"><span class="solution-title">Solution</span><br>${q.latexSolution.replace(/\n/g, '<br>')}</div>`;
             container.appendChild(qDiv);
             renderMath(qDiv);
         };
@@ -263,16 +262,22 @@
                     const kHtml = block.querySelector('.selected-display').innerHTML;
                     let qHtml = "";
                     block.querySelectorAll('.added-q').forEach(q => {
-                        const clone = q.cloneNode(true);
-                        clone.querySelectorAll('button').forEach(b => b.remove());
-                        
+                        const qId = q.dataset.qid;
+                        const qData = questionLib.find(item => item.id === qId);
                         const exprText = q.querySelector('.english-expressions').value;
-                        const ta = clone.querySelector('.english-expressions');
-                        if(ta) ta.remove();
-
+                        
                         const exprHtml = exprText ? `<div style="background:#e6f7ff; padding:10px; margin-bottom:15px; border-left:4px solid #1890ff; border-radius:4px;"><strong>Key Expressions to Master:</strong><br>${exprText.replace(/\n/g, '<br>')}</div>` : '';
+                        
+                        const formattedSolution = qData ? qData.latexSolution.replace(/\n/g, '<br>') : '';
+                        const graphHtml = (qData && qData.diagramUrl) ? `<div class="q-graph-container" style="text-align:center; margin-top:10px;"><img src="${qData.diagramUrl}" style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px;"></div>` : '';
 
-                        qHtml += `<div class="exercise-container">${exprHtml}${clone.innerHTML}</div>`;
+                        qHtml += `<div class="exercise-container">
+                                    <span class="question">Practice</span>
+                                    ${exprHtml}
+                                    <div class="q-content" style="margin-top:10px;">${qData ? qData.latexQuestion : ''}</div>
+                                    ${graphHtml}
+                                    <div class="solution-box sol-box-dark"><span class="solution-title">Solution</span><br>${formattedSolution}</div>
+                                  </div>`;
                     });
                     dynamicHtml += `<div class="slide">${kHtml}${qHtml}</div>`;
                 });
@@ -309,6 +314,7 @@
                             : '';
                         
                         const exprHtml = exprText ? `<div class="key-expressions"><strong>Key Expressions to Master:</strong><br>${exprText.replace(/\n/g, '<br>')}</div>` : '';
+                        const formattedSolution = qData.latexSolution.replace(/\n/g, '<br>');
 
                         qHtml += `<div class="exercise-container">
                                     <span class="question">Practice</span>
@@ -316,7 +322,7 @@
                                     <div style="margin-top:10px;">${qData.latexQuestion}</div>
                                     ${graphHtml}
                                     <button class="sol-btn" onclick="toggleSol(this)">Show Solution</button>
-                                    <div class="solution-box sol-box-dark" style="display:none;"><span class="solution-title">Solution</span><br>${qData.latexSolution}</div>
+                                    <div class="solution-box sol-box-dark" style="display:none;"><span class="solution-title">Solution</span><br>${formattedSolution}</div>
                                   </div>`;
                     }
                 });
