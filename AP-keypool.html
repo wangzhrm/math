@@ -129,8 +129,8 @@
             <select id="chapSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;"></select>
         </div>
         <div style="margin-bottom:15px;">
-            <label>LaTeX</label>
-            <textarea id="latexInput" oninput="updatePreview()" style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace;"></textarea>
+            <label>Content (Use $...$ for Math)</label>
+            <textarea id="latexInput" oninput="updatePreview()" placeholder="Example: Horizontal Asymptote is $y = L$" style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: 'Segoe UI', sans-serif;"></textarea>
         </div>
         <label>Preview:</label>
         <div id="latexPreview" class="preview-box"></div>
@@ -194,11 +194,12 @@
             section.className = "chapter-section";
             section.id = `sec-${chap.id}`;
             
+            // FIXED: Removed the wrapping $ from the display div
             let itemsHtml = items.map(item => `
                 <div class="knowledge-item" id="item-${item.id}">
                     <input type="checkbox" class="print-checkbox item-check" data-chap="${chap.id}" 
                            onclick="event.stopPropagation()" onchange="syncPrintClass('${item.id}')">
-                    <div class="content-display">$${item.latex}$</div>
+                    <div class="content-display">${item.latex}</div>
                     <div class="item-actions">
                         <button class="action-btn" onclick="event.stopPropagation(); moveItem('${item.id}', -1)">↑</button>
                         <button class="action-btn" onclick="event.stopPropagation(); moveItem('${item.id}', 1)">↓</button>
@@ -280,10 +281,11 @@
 
     window.closeModal = () => document.getElementById('editModal').style.display = 'none';
 
+    // FIXED: Removed the automatic wrapping of $ symbols in preview
     window.updatePreview = () => {
         const val = document.getElementById('latexInput').value;
         const out = document.getElementById('latexPreview');
-        out.innerHTML = val ? '$' + val + '$' : "";
+        out.innerHTML = val || ""; 
         if (window.MathJax) MathJax.typesetPromise([out]);
     };
 
