@@ -36,7 +36,7 @@
                     document.getElementById('app-wrapper').style.display = 'flex';
                     await loadFilters();
                     await loadKnowledge(); 
-                    await window.refreshData(); // Initial load
+                    await window.refreshData(); 
                 } else { 
                     document.getElementById('loginMsg').innerText = "Invalid credentials.";
                 }
@@ -75,8 +75,6 @@
                 const sel = document.createElement('select');
                 sel.className = "filter-select";
                 sel.innerHTML = `<option value="">All ${root.name}</option>`;
-                
-                // FIXED: Auto-apply filters whenever a dropdown changes
                 sel.onchange = () => renderCurrentQuestions();
 
                 const children = results.filter(c => {
@@ -110,29 +108,17 @@
             snap.forEach(d => allKnowledge.push({ id: d.id, ...d.data() }));
         }
 
-        // IMPROVED: This function refetches from DB while keeping UI dropdowns the same
         window.refreshData = async () => {
             const btn = document.getElementById('refreshBtn');
             if(btn) btn.innerText = "Refetching...";
-            
             try {
                 const snap = await getDocs(collection(db, "MathQuestion"));
                 allFetchedQuestions = [];
                 snap.forEach(docSnap => allFetchedQuestions.push({ id: docSnap.id, ...docSnap.data() }));
-                
-                allFetchedQuestions.sort((a, b) => {
-                    const timeA = a.createdAt?.seconds || 0;
-                    const timeB = b.createdAt?.seconds || 0;
-                    if (timeA !== timeB) return timeA - timeB;
-                    return a.id.localeCompare(b.id);
-                });
-
+                allFetchedQuestions.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
                 renderCurrentQuestions();
-            } catch (err) { 
-                console.error(err);
-            } finally {
-                if(btn) btn.innerText = "🔄 Refresh";
-            }
+            } catch (err) { console.error(err); } 
+            finally { if(btn) btn.innerText = "🔄 Refresh"; }
         };
 
         window.renderCurrentQuestions = () => {
@@ -170,7 +156,7 @@
                     </div>`;
                 container.appendChild(card);
             });
-            if (window.MathJax) MathJax.typesetPromise([container]);
+            if (window.MathJax) MathJax.typesetPromise([container]).catch(err => console.log(err));
         };
 
         window.renderViewLibrary = () => {
@@ -196,14 +182,14 @@
                     </div>`;
                 list.appendChild(item);
             });
-            if (window.MathJax) MathJax.typesetPromise([list]);
+            if (window.MathJax) MathJax.typesetPromise([list]).catch(err => console.log(err));
         };
 
         window.updateKnowPreview = () => {
             const input = document.getElementById('knowLatex').value;
             const preview = document.getElementById('knowPreview');
             preview.innerHTML = '$' + input + '$';
-            if (window.MathJax) MathJax.typesetPromise([preview]);
+            if (window.MathJax) MathJax.typesetPromise([preview]).catch(err => console.log(err));
         };
 
         window.saveKnowledge = async () => {
@@ -249,7 +235,7 @@
                     </div>`;
                 list.appendChild(item);
             });
-            if (window.MathJax) MathJax.typesetPromise([list]);
+            if (window.MathJax) MathJax.typesetPromise([list]).catch(err => console.log(err));
         };
 
         window.attachKnowledgeToQuestion = async (qId, kId) => {
@@ -284,12 +270,20 @@
                 card.innerHTML = `<div class="q-body">${qData.latexQuestion}</div>`;
                 list.appendChild(card);
             });
-            if (window.MathJax) MathJax.typesetPromise([focusView]);
+            if (window.MathJax) MathJax.typesetPromise([focusView]).catch(err => console.log(err));
         };
 
         window.exitFocusMode = () => {
             document.getElementById('focus-view').style.display = 'none';
             document.getElementById('main-content-view').style.display = 'block';
+        };
+
+        window.deleteKnowledge = async (id) => {
+            if(confirm("Delete this knowledge point?")) {
+                await deleteDoc(doc(db, "Knowledge", id));
+                await loadKnowledge();
+                renderViewLibrary();
+            }
         };
     </script>
 
@@ -320,7 +314,6 @@
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
         #login-overlay { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .floating-actions { position: fixed; right: 20px; bottom: 30px; display: flex; flex-direction: column; gap: 12px; z-index: 5000; }
-        .floating-actions .primary-btn { box-shadow: 0 4px 12px rgba(0,0,0,0.2); min-width: 140px; }
         .search-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 10px 0; gap: 15px; }
         .linked-item { background-color: #f6ffed !important; border-left: 4px solid #52c41a; padding-left: 5px; }
     </style>
