@@ -137,7 +137,8 @@
                 
                 let knowHtml = qKnowIds.map(kid => {
                     const k = allKnowledge.find(kn => kn.id === kid);
-                    return k ? `<div class="know-tag" onclick="enterFocusMode('${k.id}')" style="cursor:pointer">$${k.latex}$</div>` : "";
+                    // Use innerHTML support for tags like <br>
+                    return k ? `<div class="know-tag" onclick="enterFocusMode('${k.id}')" style="cursor:pointer">${k.latex}</div>` : "";
                 }).join("");
 
                 card.innerHTML = `
@@ -173,8 +174,8 @@
                 const item = document.createElement('div');
                 item.className = "search-item";
                 item.innerHTML = `
-                    <div class="search-item-text" style="cursor:pointer" onclick="document.getElementById('viewLibraryModal').style.display='none'; enterFocusMode('${k.id}')">
-                        <div class="latex-content-container">$${k.latex}$</div>
+                    <div class="search-item-text" style="cursor:pointer; flex: 1;" onclick="document.getElementById('viewLibraryModal').style.display='none'; enterFocusMode('${k.id}')">
+                        <div class="latex-content-container">${k.latex}</div>
                         <small style="color:var(--primary); font-weight:bold;">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
@@ -188,14 +189,14 @@
         window.updateKnowPreview = () => {
             const input = document.getElementById('knowLatex').value;
             const preview = document.getElementById('knowPreview');
-            preview.innerHTML = '$' + input + '$';
+            preview.innerHTML = input; // Directly use input to support <br>
             if (window.MathJax) MathJax.typesetPromise([preview]).catch(err => console.log(err));
         };
 
         window.saveKnowledge = async () => {
             const content = document.getElementById('knowLatex').value;
             const catId = document.getElementById('knowCategory').value;
-            if(!content || !catId) return alert("Please provide both LaTeX and a Chapter.");
+            if(!content || !catId) return alert("Please provide both content and a Chapter.");
             await addDoc(collection(db, "Knowledge"), { latex: content, categoryId: catId, createdAt: new Date() });
             document.getElementById('knowModal').style.display = 'none';
             document.getElementById('knowLatex').value = "";
@@ -223,8 +224,8 @@
                 const item = document.createElement('div');
                 item.className = "search-item" + (isLinked ? " linked-item" : "");
                 item.innerHTML = `
-                    <div class="search-item-text">
-                        <div class="latex-content-container">$${k.latex}$</div>
+                    <div class="search-item-text" style="flex: 1;">
+                        <div class="latex-content-container">${k.latex}</div>
                         <small style="color:#888">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
@@ -259,7 +260,7 @@
             document.getElementById('focus-header-content').innerHTML = `
                 <div style="background:#e6f7ff; padding:20px; border-radius:8px; border:1px solid #91d5ff; margin-bottom:20px;">
                     <div style="font-size:12px; font-weight:bold; color:#0050b3; text-transform:uppercase;">${categoryLookup[k.categoryId] || 'General'}</div>
-                    <div style="font-size:18px; margin-top:10px;">$${k.latex}$</div>
+                    <div style="font-size:18px; margin-top:10px; line-height: 1.6;">${k.latex}</div>
                 </div>`;
             const list = document.getElementById('focus-question-list');
             list.innerHTML = "";
@@ -305,7 +306,7 @@
         .primary-btn { padding: 10px 18px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
         .small-btn { padding: 5px 12px; font-size: 12px; border: 1px solid #d9d9d9; border-radius: 4px; cursor: pointer; background: #fff; }
         .linked-knowledges { margin-top: 15px; padding-top: 10px; border-top: 1px dashed #eee; display: flex; gap: 8px; flex-wrap: wrap; }
-        .know-tag { background: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 2px 10px; border-radius: 4px; font-size: 13px; }
+        .know-tag { background: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 5px 12px; border-radius: 4px; font-size: 14px; line-height: 1.5; }
         .sol-box { margin-top: 20px; background: #fffdf6; border: 1px solid #ffe58f; border-radius: 8px; display: none; overflow: hidden; }
         .sol-title { background: #fff1b8; padding: 5px 15px; font-size: 12px; font-weight: bold; color: #874d00; text-transform: uppercase; border-bottom: 1px solid #ffe58f; }
         .s-content { padding: 15px; white-space: pre-wrap; line-height: 1.6; color: #333; }
@@ -314,7 +315,8 @@
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
         #login-overlay { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
         .floating-actions { position: fixed; right: 20px; bottom: 30px; display: flex; flex-direction: column; gap: 12px; z-index: 5000; }
-        .search-item { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; padding: 10px 0; gap: 15px; }
+        .search-item { display: flex; align-items: flex-start; border-bottom: 1px solid #f0f0f0; padding: 15px 0; gap: 15px; }
+        .latex-content-container { line-height: 1.6; word-wrap: break-word; overflow-wrap: break-word; width: 100%; }
         .linked-item { background-color: #f6ffed !important; border-left: 4px solid #52c41a; padding-left: 5px; }
     </style>
 </head>
@@ -369,7 +371,7 @@
         <div class="modal-content" style="width: 500px;">
             <h3>New Knowledge Point</h3>
             <select id="knowCategory" class="filter-select" style="width:100%; margin-bottom:15px;"></select>
-            <textarea id="knowLatex" placeholder="Enter LaTeX..." oninput="updateKnowPreview()" style="width:100%; height:120px; padding:10px; border-radius:8px; border:1px solid #ddd; box-sizing: border-box;"></textarea>
+            <textarea id="knowLatex" placeholder="Enter HTML/LaTeX (e.g. Concept <br> $x=2$)" oninput="updateKnowPreview()" style="width:100%; height:120px; padding:10px; border-radius:8px; border:1px solid #ddd; box-sizing: border-box;"></textarea>
             <div id="knowPreview" style="margin-top:10px; padding:15px; border:1px dashed #1890ff; border-radius:8px; background:#fafafa; min-height:40px;"></div>
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button onclick="saveKnowledge()" class="primary-btn" style="flex:1">Save</button>
