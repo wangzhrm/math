@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AP Math Knowledge Mapper</title>
+    <title>AP Math Knowledge Mapper - Auto-Sync</title>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -36,7 +36,7 @@
                     document.getElementById('app-wrapper').style.display = 'flex';
                     await loadFilters();
                     await loadKnowledge(); 
-                    await loadQuestions();
+                    await window.refreshData(); // Initial load
                 } else { 
                     document.getElementById('loginMsg').innerText = "Invalid credentials.";
                 }
@@ -76,6 +76,9 @@
                 sel.className = "filter-select";
                 sel.innerHTML = `<option value="">All ${root.name}</option>`;
                 
+                // FIXED: Auto-apply filters whenever a dropdown changes
+                sel.onchange = () => renderCurrentQuestions();
+
                 const children = results.filter(c => {
                     const pid = (c.parent && typeof c.parent === 'object') ? c.parent.id : c.parent;
                     return pid === root.id;
@@ -89,7 +92,6 @@
                     div.appendChild(sel);
                     panel.appendChild(div);
 
-                    // Only include in Knowledge dropdowns if the root category is "Chapter"
                     if (root.name.toLowerCase().includes("chapter")) {
                         children.forEach(child => {
                             const opt = `<option value="${child.id}">${child.name}</option>`;
@@ -108,14 +110,16 @@
             snap.forEach(d => allKnowledge.push({ id: d.id, ...d.data() }));
         }
 
-        window.loadQuestions = async () => {
-            const container = document.getElementById('questionList');
+        // IMPROVED: This function refetches from DB while keeping UI dropdowns the same
+        window.refreshData = async () => {
+            const btn = document.getElementById('refreshBtn');
+            if(btn) btn.innerText = "Refetching...";
+            
             try {
                 const snap = await getDocs(collection(db, "MathQuestion"));
                 allFetchedQuestions = [];
                 snap.forEach(docSnap => allFetchedQuestions.push({ id: docSnap.id, ...docSnap.data() }));
                 
-                // Chronological Sort: Oldest (Early) first
                 allFetchedQuestions.sort((a, b) => {
                     const timeA = a.createdAt?.seconds || 0;
                     const timeB = b.createdAt?.seconds || 0;
@@ -124,7 +128,11 @@
                 });
 
                 renderCurrentQuestions();
-            } catch (err) { container.innerHTML = "Error: " + err.message; }
+            } catch (err) { 
+                console.error(err);
+            } finally {
+                if(btn) btn.innerText = "🔄 Refresh";
+            }
         };
 
         window.renderCurrentQuestions = () => {
@@ -178,14 +186,12 @@
             }).forEach(k => {
                 const item = document.createElement('div');
                 item.className = "search-item";
-                const encodedLatex = encodeURIComponent(k.latex);
                 item.innerHTML = `
                     <div class="search-item-text" style="cursor:pointer" onclick="document.getElementById('viewLibraryModal').style.display='none'; enterFocusMode('${k.id}')">
                         <div class="latex-content-container">$${k.latex}$</div>
                         <small style="color:var(--primary); font-weight:bold;">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
-                        <button class="small-btn" onclick="editKnowledge('${k.id}', '${encodedLatex}')" style="color:var(--primary); margin-bottom:2px;">Edit</button>
                         <button class="small-btn" onclick="deleteKnowledge('${k.id}')" style="color:var(--danger)">Del</button>
                     </div>`;
                 list.appendChild(item);
@@ -248,13 +254,13 @@
 
         window.attachKnowledgeToQuestion = async (qId, kId) => {
             await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayUnion(kId) });
-            await loadQuestions(); 
+            await window.refreshData(); 
             renderKnowledgeSearch();
         };
 
         window.removeKnowledgeFromQuestion = async (qId, kId) => {
             await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayRemove(kId) });
-            await loadQuestions(); 
+            await window.refreshData(); 
             renderKnowledgeSearch();
         };
 
@@ -272,7 +278,7 @@
             const list = document.getElementById('focus-question-list');
             list.innerHTML = "";
             const linkedQuestions = allFetchedQuestions.filter(q => q.knowledgeIds?.includes(kId));
-            linkedQuestions.forEach((qData, idx) => {
+            linkedQuestions.forEach((qData) => {
                 const card = document.createElement('div');
                 card.className = "q-card";
                 card.innerHTML = `<div class="q-body">${qData.latexQuestion}</div>`;
@@ -323,7 +329,7 @@
 
     <div id="login-overlay">
         <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 280px; text-align: center;">
-            <h2 style="margin-top:0; color: #1890ff;">AP Math Knowledge Mapper</h2>
+            <h2 style="margin-top:0; color: #1890ff;">AP Math Mapper</h2>
             <input type="text" id="userInput" placeholder="Username" style="width:100%; padding:10px; margin:8px 0; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
             <input type="password" id="passInput" placeholder="Password" style="width:100%; padding:10px; margin:8px 0; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
             <button onclick="attemptLogin()" class="primary-btn" style="width:100%">Login</button>
@@ -337,11 +343,17 @@
                 <button onclick="document.getElementById('viewLibraryModal').style.display='flex'; renderViewLibrary();" class="primary-btn" style="background:#fa8c16">View Library</button>
                 <button onclick="document.getElementById('knowModal').style.display='flex'" class="primary-btn" style="background:#722ed1">Add Knowledge</button>
             </div>
+            
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h1 style="margin:0;">Question Bank</h1>
+                <div style="display:flex; align-items: center; gap: 15px;">
+                    <h1 style="margin:0;">Question Bank</h1>
+                    <button id="refreshBtn" onclick="window.refreshData()" class="primary-btn" style="background:var(--success);">🔄 Refresh</button>
+                </div>
                 <button class="primary-btn" style="background:var(--danger);" onclick="location.reload()">Logout</button>
             </div>
+
             <div class="filter-panel" id="filterPanel"></div>
+            
             <div style="display:flex; gap:12px; margin-bottom:20px; align-items: center; flex-wrap: wrap;">
                 <button onclick="renderCurrentQuestions()" class="primary-btn">Apply Filters</button>
                 <label style="background:#fff; padding:9px 15px; border:1px solid #ddd; border-radius:6px; cursor:pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
