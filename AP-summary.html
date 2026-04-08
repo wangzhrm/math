@@ -1,250 +1,430 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Knowledge Library with Question Focus</title>
-    
-    <script>
-        window.MathJax = { 
-            tex: { 
-                inlineMath: [['$', '$']], 
-                displayMath: [['$$', '$$']] 
-            },
-            chtml: {
-                displayAlign: 'left'
-            }
-        };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<meta charset="UTF-8">
+<title>Knowledge Library with Question Focus</title>
+<script>
+window.MathJax = {
+tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+chtml: { displayAlign: 'left' }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root {
+--primary: #722ed1;
+--bg: #f0f2f5;
+--text: #1f2937;
+--danger: #ff4d4f;
+--success: #52c41a;
+}
+body {
+font-family: 'Segoe UI', system-ui, sans-serif;
+background: var(--bg);
+color: var(--text);
+margin: 0;
+padding: 40px 20px;
+}
+.container {
+max-width: 900px;
+margin: auto;
+}
+.header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 40px;
+}
+.btn-group {
+display: flex;
+gap: 10px;
+}
+button {
+padding: 10px 20px;
+border-radius: 8px;
+font-weight: 600;
+cursor: pointer;
+border: none;
+}
+.add-btn {
+background: var(--primary);
+color: white;
+}
 
-    <style>
-        :root { --primary: #722ed1; --bg: #f0f2f5; --text: #1f2937; --danger: #ff4d4f; --success: #52c41a; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
-        .container { max-width: 900px; margin: auto; }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-        .btn-group { display: flex; gap: 10px; }
-        
-        button { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; }
-        .add-btn { background: var(--primary); color: white; }
-        
-        .chapter-section { background: white; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; overflow: hidden; }
-        .chapter-banner { background: #f8fafc; padding: 18px 25px; font-size: 1.2rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; cursor: pointer; }
-        
-        .knowledge-container { padding: 5px 25px; }
-        .knowledge-item { padding: 20px 0; border-bottom: 1px solid #f1f5f9; display: flex; align-items: flex-start; gap: 15px; }
-        .content-display { font-size: 1.1rem; flex: 1; line-height: 1.6; }
+/* Added: Border to separate knowledge items */
+.chapter-section {
+background: white;
+border-radius: 12px;
+margin-bottom: 20px;
+box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+border: 1px solid #e5e7eb;
+overflow: hidden;
+}
+.chapter-banner {
+background: #f8fafc;
+padding: 18px 25px;
+font-size: 1.2rem;
+font-weight: 800;
+color: var(--primary);
+display: flex;
+align-items: center;
+cursor: pointer;
+}
 
-        .item-actions { display: flex; gap: 5px; flex-shrink: 0; }
-        .action-btn { background: #fff; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
-        .q-btn { background: #e6f7ff; color: #1890ff; border-color: #91d5ff; font-size: 13px; }
-        .q-btn:hover { background: #1890ff; color: white; }
+.knowledge-container {
+padding: 5px 25px;
+}
 
-        /* Question Modal Styles */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
-        .modal-content { background: white; width: 850px; max-width: 100%; border-radius: 16px; padding: 30px; max-height: 90vh; overflow-y: auto; position: relative; }
-        
-        .q-focus-card { border: 1px solid #eee; border-radius: 10px; padding: 20px; margin-bottom: 20px; background: #fafafa; }
-        .sol-container { margin-top: 15px; display: none; padding: 15px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 6px; }
-        .sol-btn { margin-top: 10px; background: #8c8c8c; color: white; font-size: 12px; padding: 5px 12px; }
-        .close-x { position: absolute; right: 20px; top: 20px; font-size: 24px; cursor: pointer; color: #999; }
-        
-        .knowledge-header-tip { background: #f9f0ff; border: 1px solid #d3adf7; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; }
-    </style>
+/* Added: Border bottom to separate each knowledge item */
+.knowledge-item {
+padding: 20px 0;
+border-bottom: 1px solid #f1f5f9; /* This is the separator line */
+display: flex;
+align-items: flex-start;
+gap: 15px;
+}
+
+.content-display {
+font-size: 1.1rem;
+flex: 1;
+line-height: 1.6;
+}
+.item-actions {
+display: flex;
+gap: 5px;
+flex-shrink: 0;
+}
+.action-btn {
+background: #fff;
+border: 1px solid #d1d5db;
+padding: 6px 10px;
+border-radius: 4px;
+font-size: 11px;
+cursor: pointer;
+font-weight: bold;
+}
+.q-btn {
+background: #e6f7ff;
+color: #1890ff;
+border-color: #91d5ff;
+font-size: 13px;
+}
+.q-btn:hover {
+background: #1890ff;
+color: white;
+}
+
+/* Question Modal Styles */
+.modal-overlay {
+position: fixed;
+inset: 0;
+background: rgba(0,0,0,0.7);
+display: none;
+justify-content: center;
+align-items: center;
+z-index: 2000;
+padding: 20px;
+}
+.modal-content {
+background: white;
+width: 850px;
+max-width: 100%;
+border-radius: 16px;
+padding: 30px;
+max-height: 90vh;
+overflow-y: auto;
+position: relative;
+}
+.q-focus-card {
+border: 1px solid #eee;
+border-radius: 10px;
+padding: 20px;
+margin-bottom: 20px;
+background: #fafafa;
+}
+.sol-container {
+margin-top: 15px;
+display: none;
+padding: 15px;
+background: #f6ffed;
+border: 1px solid #b7eb8f;
+border-radius: 6px;
+}
+.sol-btn {
+margin-top: 10px;
+background: #8c8c8c;
+color: white;
+font-size: 12px;
+padding: 5px 12px;
+}
+.close-x {
+position: absolute;
+right: 20px;
+top: 20px;
+font-size: 24px;
+cursor: pointer;
+color: #999;
+}
+.knowledge-header-tip {
+background: #f9f0ff;
+border: 1px solid #d3adf7;
+padding: 15px;
+border-radius: 8px;
+margin-bottom: 20px;
+font-weight: 500;
+}
+/* Added: Style for Export Button in Modal */
+.modal-header-actions {
+position: absolute;
+right: 80px;
+top: 25px;
+}
+.export-btn {
+background: #fa8c16;
+color: white;
+font-size: 12px;
+padding: 5px 12px;
+}
+.export-btn:hover {
+background: #d46b08;
+}
+</style>
 </head>
 <body>
-
 <div class="container">
-    <div class="header">
-        <h1>Knowledge Bank</h1>
-        <div class="btn-group">
-            <button class="add-btn" onclick="openAddModal()">+ Add New</button>
-        </div>
-    </div>
-    <div id="knowledgeLibrary"></div>
+<div class="header">
+<h1>Knowledge Bank</h1>
+<div class="btn-group">
+<button class="add-btn" onclick="openAddModal()">+ Add New</button>
+</div>
+</div>
+<div id="knowledgeLibrary"></div>
 </div>
 
 <div id="questionModal" class="modal-overlay">
-    <div class="modal-content">
-        <span class="close-x" onclick="closeQuestionModal()">&times;</span>
-        <h2 style="color:var(--primary); margin-top:0;">Linked Practice Questions</h2>
-        <div id="modalKnowledgeContext" class="knowledge-header-tip"></div>
-        <div id="modalQuestionList"></div>
-    </div>
+<div class="modal-content">
+<!-- Added: Export Button -->
+<span class="modal-header-actions"><button class="action-btn export-btn" onclick="exportCurrentView()">Export HTML</button></span>
+<span class="close-x" onclick="closeQuestionModal()">&times;</span>
+<h2 style="color:var(--primary); margin-top:0;">Linked Practice Questions</h2>
+<div id="modalKnowledgeContext" class="knowledge-header-tip"></div>
+<div id="modalQuestionList"></div>
+</div>
 </div>
 
 <div id="editModal" class="modal-overlay">
-    <div class="modal-content" style="width: 600px;">
-        <h3 id="modalTitle">Knowledge Editor</h3>
-        <input type="hidden" id="editTargetId">
-        <div style="margin-bottom:15px;">
-            <label>Chapter</label>
-            <select id="chapSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;"></select>
-        </div>
-        <textarea id="latexInput" placeholder="Enter LaTeX..." style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px;"></textarea>
-        <div style="display:flex; gap:10px; margin-top:20px;">
-            <button onclick="closeEditModal()" style="flex:1; background:#eee;">Cancel</button>
-            <button onclick="saveData()" style="flex:2; background:var(--primary); color:white;">Save</button>
-        </div>
-    </div>
+<div class="modal-content" style="width: 600px;">
+<h3 id="modalTitle">Knowledge Editor</h3>
+<input type="hidden" id="editTargetId">
+<div style="margin-bottom:15px;">
+<label>Chapter</label>
+<select id="chapSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;"></select>
+</div>
+<textarea id="latexInput" placeholder="Enter LaTeX..." style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px;"></textarea>
+<div style="display:flex; gap:10px; margin-top:20px;">
+<button onclick="closeEditModal()" style="flex:1; background:#eee;">Cancel</button>
+<button onclick="saveData()" style="flex:2; background:var(--primary); color:white;">Save</button>
+</div>
+</div>
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
-        authDomain: "ap-math-8783b.firebaseapp.com",
-        projectId: "ap-math-8783b",
-        storageBucket: "ap-math-8783b.firebasestorage.app",
-        messagingSenderId: "357604958030",
-        appId: "1:357604958030:web:b4bcd12bc9cccfefd6081f"
-    };
+const firebaseConfig = {
+apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
+authDomain: "ap-math-8783b.firebaseapp.com",
+projectId: "ap-math-8783b",
+storageBucket: "ap-math-8783b.firebasestorage.app",
+messagingSenderId: "357604958030",
+appId: "1:357604958030:web:b4bcd12bc9cccfefd6081f"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-    let chapters = [];
-    let knowledgeBase = [];
-    let allQuestions = [];
+let chapters = [];
+let knowledgeBase = [];
+let allQuestions = [];
 
-    async function init() {
-        await fetchData();
-        renderUI();
-    }
+async function init() {
+await fetchData();
+renderUI();
+}
 
-    async function fetchData() {
-        const catSnap = await getDocs(collection(db, "Category"));
-        const allCats = catSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const root = allCats.find(c => c.name?.toLowerCase().includes("chapter"));
-        
-        if (root) {
-            chapters = allCats.filter(c => {
-                const pid = (c.parent && typeof c.parent === 'object') ? c.parent.id : c.parent;
-                return pid === root.id;
-            }).sort((a, b) => (a.order || 0) - (b.order || 0));
-        }
+async function fetchData() {
+const catSnap = await getDocs(collection(db, "Category"));
+const allCats = catSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+const root = allCats.find(c => c.name?.toLowerCase().includes("chapter"));
+if (root) {
+chapters = allCats.filter(c => {
+const pid = (c.parent && typeof c.parent === 'object') ? c.parent.id : c.parent;
+return pid === root.id;
+}).sort((a, b) => (a.order || 0) - (b.order || 0));
+}
 
-        const knoSnap = await getDocs(collection(db, "Knowledge"));
-        knowledgeBase = knoSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.order||0) - (b.order||0));
+const knoSnap = await getDocs(collection(db, "Knowledge"));
+knowledgeBase = knoSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.order||0) - (b.order||0));
 
-        const qSnap = await getDocs(collection(db, "MathQuestion"));
-        allQuestions = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+const qSnap = await getDocs(collection(db, "MathQuestion"));
+allQuestions = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        document.getElementById('chapSelect').innerHTML = chapters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    }
+document.getElementById('chapSelect').innerHTML = chapters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
 
-    function renderUI() {
-        const lib = document.getElementById('knowledgeLibrary');
-        lib.innerHTML = "";
+function renderUI() {
+const lib = document.getElementById('knowledgeLibrary');
+lib.innerHTML = "";
+chapters.forEach(chap => {
+const items = knowledgeBase.filter(k => k.categoryId === chap.id);
+const section = document.createElement('div');
+section.className = "chapter-section";
+let itemsHtml = items.map(item => {
+const linkedCount = allQuestions.filter(q => q.knowledgeIds?.includes(item.id)).length;
+return `
+<div class="knowledge-item">
+<div class="content-display">${item.latex}</div>
+<div class="item-actions">
+<button class="action-btn q-btn" onclick="openQuestionFocus('${item.id}')">Q (${linkedCount})</button>
+<button class="action-btn" onclick="moveItem('${item.id}', -1)">↑</button>
+<button class="action-btn" onclick="moveItem('${item.id}', 1)">↓</button>
+<button class="action-btn" onclick="openEditModal('${item.id}')">Edit</button>
+<button class="action-btn" style="color:var(--danger)" onclick="deleteItem('${item.id}')">Del</button>
+</div>
+</div>`;
+}).join('');
+section.innerHTML = `
+<div class="chapter-banner">${chap.name}</div>
+<div class="knowledge-container">${itemsHtml || '<p style="color:#999; padding:15px;">Empty</p>'}</div>
+`;
+lib.appendChild(section);
+});
+if (window.MathJax) MathJax.typesetPromise();
+}
 
-        chapters.forEach(chap => {
-            const items = knowledgeBase.filter(k => k.categoryId === chap.id);
-            const section = document.createElement('div');
-            section.className = "chapter-section";
-            
-            let itemsHtml = items.map(item => {
-                const linkedCount = allQuestions.filter(q => q.knowledgeIds?.includes(item.id)).length;
-                return `
-                <div class="knowledge-item">
-                    <div class="content-display">${item.latex}</div>
-                    <div class="item-actions">
-                        <button class="action-btn q-btn" onclick="openQuestionFocus('${item.id}')">Q (${linkedCount})</button>
-                        <button class="action-btn" onclick="moveItem('${item.id}', -1)">↑</button>
-                        <button class="action-btn" onclick="moveItem('${item.id}', 1)">↓</button>
-                        <button class="action-btn" onclick="openEditModal('${item.id}')">Edit</button>
-                        <button class="action-btn" style="color:var(--danger)" onclick="deleteItem('${item.id}')">Del</button>
-                    </div>
-                </div>`;
-            }).join('');
+window.openQuestionFocus = (kId) => {
+const knowledge = knowledgeBase.find(k => k.id === kId);
+const linkedQs = allQuestions.filter(q => q.knowledgeIds?.includes(kId));
+document.getElementById('modalKnowledgeContext').innerHTML = `Focusing on: ${knowledge.latex}`;
+const listContainer = document.getElementById('modalQuestionList');
+if (linkedQs.length === 0) {
+listContainer.innerHTML = "<p>No questions currently linked to this concept.</p>";
+} else {
+listContainer.innerHTML = linkedQs.map((q, idx) => `
+<div class="q-focus-card">
+<div style="font-weight:bold; color:#888; margin-bottom:10px;">Question ${idx + 1}</div>
+<div class="q-text">${q.latexQuestion}</div>
+<button class="sol-btn" onclick="toggleSolution(this)">View Solution</button>
+<div class="sol-container">${q.latexSolution || 'No solution provided.'}</div>
+</div>
+`).join('');
+}
+document.getElementById('questionModal').style.display = 'flex';
+if (window.MathJax) MathJax.typesetPromise([listContainer, document.getElementById('modalKnowledgeContext')]);
+};
 
-            section.innerHTML = `
-                <div class="chapter-banner">${chap.name}</div>
-                <div class="knowledge-container">${itemsHtml || '<p style="color:#999; padding:15px;">Empty</p>'}</div>
-            `;
-            lib.appendChild(section);
-        });
-        if (window.MathJax) MathJax.typesetPromise();
-    }
+window.toggleSolution = (btn) => {
+const sol = btn.nextElementSibling;
+const isHidden = sol.style.display === 'none' || sol.style.display === '';
+sol.style.display = isHidden ? 'block' : 'none';
+btn.innerText = isHidden ? 'Hide Solution' : 'View Solution';
+};
 
-    window.openQuestionFocus = (kId) => {
-        const knowledge = knowledgeBase.find(k => k.id === kId);
-        const linkedQs = allQuestions.filter(q => q.knowledgeIds?.includes(kId));
-        
-        document.getElementById('modalKnowledgeContext').innerHTML = `Focusing on: ${knowledge.latex}`;
-        const listContainer = document.getElementById('modalQuestionList');
-        
-        if (linkedQs.length === 0) {
-            listContainer.innerHTML = "<p>No questions currently linked to this concept.</p>";
-        } else {
-            listContainer.innerHTML = linkedQs.map((q, idx) => `
-                <div class="q-focus-card">
-                    <div style="font-weight:bold; color:#888; margin-bottom:10px;">Question ${idx + 1}</div>
-                    <div class="q-text">${q.latexQuestion}</div>
-                    <button class="sol-btn" onclick="toggleSolution(this)">View Solution</button>
-                    <div class="sol-container">${q.latexSolution || 'No solution provided.'}</div>
-                </div>
-            `).join('');
-        }
-        
-        document.getElementById('questionModal').style.display = 'flex';
-        if (window.MathJax) MathJax.typesetPromise([listContainer, document.getElementById('modalKnowledgeContext')]);
-    };
+window.closeQuestionModal = () => document.getElementById('questionModal').style.display = 'none';
 
-    window.toggleSolution = (btn) => {
-        const sol = btn.nextElementSibling;
-        const isHidden = sol.style.display === 'none' || sol.style.display === '';
-        sol.style.display = isHidden ? 'block' : 'none';
-        btn.innerText = isHidden ? 'Hide Solution' : 'View Solution';
-    };
+window.closeEditModal = () => document.getElementById('editModal').style.display = 'none';
 
-    window.closeQuestionModal = () => document.getElementById('questionModal').style.display = 'none';
-    window.closeEditModal = () => document.getElementById('editModal').style.display = 'none';
+window.openAddModal = () => {
+document.getElementById('editTargetId').value = "";
+document.getElementById('latexInput').value = "";
+document.getElementById('editModal').style.display = 'flex';
+};
 
-    window.openAddModal = () => {
-        document.getElementById('editTargetId').value = "";
-        document.getElementById('latexInput').value = "";
-        document.getElementById('editModal').style.display = 'flex';
-    };
+window.openEditModal = (id) => {
+const item = knowledgeBase.find(k => k.id === id);
+document.getElementById('editTargetId').value = id;
+document.getElementById('latexInput').value = item.latex;
+document.getElementById('chapSelect').value = item.categoryId;
+document.getElementById('editModal').style.display = 'flex';
+};
 
-    window.openEditModal = (id) => {
-        const item = knowledgeBase.find(k => k.id === id);
-        document.getElementById('editTargetId').value = id;
-        document.getElementById('latexInput').value = item.latex;
-        document.getElementById('chapSelect').value = item.categoryId;
-        document.getElementById('editModal').style.display = 'flex';
-    };
+window.saveData = async () => {
+const id = document.getElementById('editTargetId').value;
+const latex = document.getElementById('latexInput').value;
+const catId = document.getElementById('chapSelect').value;
+if (id) await updateDoc(doc(db, "Knowledge", id), { latex, categoryId: catId });
+else await addDoc(collection(db, "Knowledge"), { latex, categoryId: catId, order: knowledgeBase.length, createdAt: new Date() });
+closeEditModal();
+await init();
+};
 
-    window.saveData = async () => {
-        const id = document.getElementById('editTargetId').value;
-        const latex = document.getElementById('latexInput').value;
-        const catId = document.getElementById('chapSelect').value;
-        if (id) await updateDoc(doc(db, "Knowledge", id), { latex, categoryId: catId });
-        else await addDoc(collection(db, "Knowledge"), { latex, categoryId: catId, order: knowledgeBase.length, createdAt: new Date() });
-        closeEditModal();
-        await init();
-    };
+window.deleteItem = async (id) => {
+if (confirm("Delete this?")) {
+await deleteDoc(doc(db, "Knowledge", id));
+await init();
+}
+};
 
-    window.deleteItem = async (id) => {
-        if (confirm("Delete this?")) {
-            await deleteDoc(doc(db, "Knowledge", id));
-            await init();
-        }
-    };
+window.moveItem = async (id, dir) => {
+const idx = knowledgeBase.findIndex(k => k.id === id);
+const target = idx + dir;
+if (target < 0 || target >= knowledgeBase.length) return;
+const currentId = knowledgeBase[idx].id;
+const swapId = knowledgeBase[target].id;
+await updateDoc(doc(db, "Knowledge", currentId), { order: target });
+await updateDoc(doc(db, "Knowledge", swapId), { order: idx });
+await init();
+};
 
-    window.moveItem = async (id, dir) => {
-        const idx = knowledgeBase.findIndex(k => k.id === id);
-        const target = idx + dir;
-        if (target < 0 || target >= knowledgeBase.length) return;
-        const currentId = knowledgeBase[idx].id;
-        const swapId = knowledgeBase[target].id;
-        await updateDoc(doc(db, "Knowledge", currentId), { order: target });
-        await updateDoc(doc(db, "Knowledge", swapId), { order: idx });
-        await init();
-    };
+// Added: Export Function
+window.exportCurrentView = () => {
+// Get the focused knowledge element
+const knowledgeElem = document.getElementById('modalKnowledgeContext').cloneNode(true);
+// Get the questions container
+const questionsContainer = document.getElementById('modalQuestionList');
+// Clone it to manipulate without affecting the UI
+const clone = questionsContainer.cloneNode(true);
 
-    init();
+// Remove solution buttons and solution text from the clone
+const solBtns = clone.querySelectorAll('.sol-btn');
+const solContainers = clone.querySelectorAll('.sol-container');
+solBtns.forEach(btn => btn.remove());
+solContainers.forEach(sol => sol.remove());
+
+// Create a basic HTML structure
+const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Knowledge Export</title>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; padding: 40px; background: #fff; color: #333; }
+.knowledge-header-tip { background: #f9f0ff; border: 1px solid #d3adf7; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: 500; }
+.q-focus-card { border: 1px solid #eee; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<h1>Exported Knowledge & Questions</h1>
+${knowledgeElem.innerHTML}
+${clone.innerHTML}
+</body>
+</html>`;
+
+// Create a Blob and trigger download
+const blob = new Blob([htmlContent], { type: 'text/html' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'knowledge_export.html';
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
+};
+
+init();
 </script>
 </body>
 </html>
