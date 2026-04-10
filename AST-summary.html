@@ -7,7 +7,7 @@
     <script>
         window.MathJax = { 
             tex: { 
-                inlineMath: [['$', '$']], 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
                 displayMath: [['$$', '$$']] 
             },
             chtml: {
@@ -19,88 +19,85 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
-        :root { --primary: #1890ff; --bg: #f4f7f9; --text: #1f2937; --danger: #ff4d4f; --accent: #722ed1; --bar-blue: #e6f7ff; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
+        :root { 
+            --primary: #1890ff; 
+            --bg: #f4f7f9; 
+            --text: #1f2937; 
+            --danger: #ff4d4f; 
+            --accent: #722ed1; 
+            --bar-blue: #e6f7ff; 
+            --sol-bg: #f9fbf9;
+            --sol-border: #d3e4d3;
+        }
         
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
         .container { max-width: 1200px; margin: auto; }
         
+        /* Header & Buttons */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; gap: 10px; flex-wrap: wrap; }
         .btn-group { display: flex; gap: 10px; }
-        
         button { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
         button:hover { opacity: 0.9; }
         .add-btn { background: var(--accent); color: white; }
         .print-mode-btn { background: #fa8c16; color: white; }
         .do-print-btn { background: #52c41a; color: white; display: none; }
         
+        /* Library Layout */
         .chapter-section { background: white; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; overflow: hidden; }
-        
         .chapter-banner { 
             background: #f8fafc; padding: 18px 25px; font-size: 1.2rem; font-weight: 800; 
             color: var(--primary); border-bottom: 1px solid #f1f5f9; display: flex; 
             align-items: center; gap: 12px; cursor: pointer; user-select: none;
         }
-        
         .fold-icon { margin-left: auto; transition: transform 0.3s; font-size: 0.9rem; opacity: 0.5; }
         .chapter-section.folded .fold-icon { transform: rotate(-90deg); }
         .chapter-section.folded .knowledge-container { display: none; }
-
         .knowledge-container { padding: 0 25px; }
         
+        /* Knowledge Item & Bar */
         .knowledge-item { 
-            position: relative; /* Needed for the background bar */
-            padding: 20px 0; border-bottom: 1px solid #f1f5f9; display: flex; 
-            align-items: flex-start; gap: 15px; width: 100%; z-index: 1;
+            position: relative; padding: 20px 0; border-bottom: 1px solid #f1f5f9; 
+            display: flex; align-items: flex-start; gap: 15px; width: 100%; z-index: 1;
         }
         .knowledge-item:last-child { border-bottom: none; }
-        
-        /* The Blue Horizontal Bar */
         .q-count-bar {
-            position: absolute;
-            left: 0;
-            top: 4px;
-            bottom: 4px;
-            background: var(--bar-blue);
-            z-index: -1; /* Place behind text */
-            border-radius: 4px;
-            transition: width 0.5s ease-out;
+            position: absolute; left: 0; top: 4px; bottom: 4px; background: var(--bar-blue);
+            z-index: -1; border-radius: 4px; transition: width 0.5s ease-out;
         }
+        .content-display { font-size: 1.1rem; flex: 1; min-width: 0; line-height: 1.6; white-space: pre-wrap; }
 
-        .content-display { font-size: 1.1rem; flex: 1; min-width: 0; line-height: 1.6; }
-
-        .item-actions { 
-            display: flex; 
-            gap: 5px; 
-            flex-shrink: 0; 
-            align-self: flex-start; 
-            padding-top: 5px;
-            position: relative;
-            z-index: 10;
-        } 
+        /* Actions */
+        .item-actions { display: flex; gap: 5px; flex-shrink: 0; align-self: flex-start; padding-top: 5px; position: relative; z-index: 10; } 
         .action-btn { background: #fff; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
-        .action-btn:hover { background: #f3f4f6; }
-        
-        .q-badge {
-            background: var(--primary);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 10px;
-            margin-left: 4px;
-        }
+        .q-badge { background: var(--primary); color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: 4px; }
 
+        /* Selection Mode */
         .print-checkbox { display: none; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
         body.selection-mode .print-checkbox { display: inline-block; }
         body.selection-mode .item-actions, body.selection-mode .add-btn { display: none; }
         body.selection-mode .do-print-btn { display: inline-block; }
 
+        /* Pop-up Question Card Styles */
+        .q-card { border: 1px solid #e1e4e8; padding: 20px; margin-bottom: 20px; border-radius: 12px; background: white; }
+        .q-header-row { margin-bottom:15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; display:flex; justify-content:space-between; align-items:center; }
+        .q-body, .s-content { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
+        .q-content-wrapper { display: flex; gap: 20px; flex-wrap: wrap; }
+        .q-text-part { flex: 1; min-width: 280px; }
+        .q-image-part img { max-width: 200px; border-radius: 4px; border: 1px solid #eee; }
+        
+        .sol-box { margin-top: 20px; background-color: var(--sol-bg); border: 1px solid var(--sol-border); border-radius: 8px; overflow: hidden; display: none; }
+        .sol-header { background: #f0f5f0; padding: 8px 15px; font-weight: bold; color: #2d5a2d; font-size: 11px; border-bottom: 1px solid #d3e4d3; text-transform: uppercase; }
+        .s-content { padding: 15px; color: #1a331a; }
+        
+        .toggle-sol-btn { background: #fff; border: 1px solid #d9d9d9; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; color: #555; transition: all 0.2s; }
+        .toggle-sol-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .toggle-sol-btn.active { background: #e6f7ff; border-color: #1890ff; color: #1890ff; }
+
         @media print {
             body { background: white; padding: 0; }
             .header, .item-actions, .add-btn, .print-mode-btn, .do-print-btn, .print-checkbox, .fold-icon, .q-count-bar { display: none !important; }
             .chapter-section { box-shadow: none; border: none; margin-bottom: 40px; }
-            .chapter-section.folded .knowledge-container { display: block !important; }
             .knowledge-item:not(.selected-for-print) { display: none !important; }
-            .chapter-section:not(.has-selected-items) { display: none !important; }
         }
     </style>
 </head>
@@ -127,11 +124,11 @@
             <select id="chapSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;"></select>
         </div>
         <div style="margin-bottom:15px;">
-            <label>LaTeX</label>
-            <textarea id="latexInput" oninput="updatePreview()" style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace;"></textarea>
+            <label>LaTeX Content</label>
+            <textarea id="latexInput" oninput="updatePreview()" style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace; white-space: pre;"></textarea>
         </div>
         <label>Preview:</label>
-        <div id="latexPreview" style="margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px dashed var(--accent); min-height: 60px;"></div>
+        <div id="latexPreview" style="margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px dashed var(--accent); min-height: 60px; white-space: pre-wrap;"></div>
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button onclick="closeModal()" style="flex:1; background:#eee;">Cancel</button>
             <button onclick="saveData()" style="flex:2; background:var(--primary); color:white;">Save Knowledge</button>
@@ -140,12 +137,12 @@
 </div>
 
 <div id="qViewerModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 2000;">
-    <div style="background: white; width: 900px; max-width: 95%; height: 85vh; border-radius: 16px; padding: 30px; box-sizing: border-box; display: flex; flex-direction: column;">
+    <div style="background: white; width: 950px; max-width: 98%; height: 90vh; border-radius: 16px; padding: 30px; box-sizing: border-box; display: flex; flex-direction: column;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0;">Linked Questions</h3>
-            <button onclick="closeQModal()" style="background: #f3f4f6; border: 1px solid #ddd; padding: 8px 15px; border-radius: 6px; cursor: pointer;">Close</button>
+            <h2 style="margin: 0;">Related Questions</h2>
+            <button onclick="closeQModal()" style="background: #f3f4f6; border: 1px solid #ddd; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Close Window</button>
         </div>
-        <div id="qViewerContent" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+        <div id="qViewerContent" style="flex: 1; overflow-y: auto; padding-right: 15px;"></div>
     </div>
 </div>
 
@@ -165,7 +162,7 @@
 
     let chapters = [];
     let knowledgeBase = [];
-    let qCounts = {}; // Stores { knowledgeId: count }
+    let qCounts = {};
 
     async function init() {
         await fetchData();
@@ -173,24 +170,19 @@
     }
 
     async function fetchData() {
-        // 1. Fetch Categories
         const catSnap = await getDocs(collection(db, "Category"));
         chapters = catSnap.docs.map(d => ({ id: d.id, ...d.data() }))
                              .filter(c => c.parent).sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        // 2. Fetch Knowledge
         const knSnap = await getDocs(collection(db, "Knowledge"));
         knowledgeBase = knSnap.docs.map(d => ({ id: d.id, ...d.data() }))
                                     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        // 3. Fetch Questions to count links
         const qSnap = await getDocs(collection(db, "MathQuestion"));
         qCounts = {};
         qSnap.docs.forEach(doc => {
             const ids = doc.data().knowledgeIds || [];
-            ids.forEach(id => {
-                qCounts[id] = (qCounts[id] || 0) + 1;
-            });
+            ids.forEach(id => { qCounts[id] = (qCounts[id] || 0) + 1; });
         });
 
         document.getElementById('chapSelect').innerHTML = chapters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -199,8 +191,6 @@
     function renderUI() {
         const lib = document.getElementById('knowledgeLibrary');
         lib.innerHTML = "";
-
-        // Find max question count for scaling the bars
         const maxQ = Math.max(...Object.values(qCounts), 1);
 
         chapters.forEach(chap => {
@@ -213,13 +203,12 @@
             
             let itemsHtml = items.map(item => {
                 const count = qCounts[item.id] || 0;
-                const barWidth = (count / maxQ) * 100; // Percentage of the widest possible bar
+                const barWidth = (count / maxQ) * 100;
 
                 return `
                 <div class="knowledge-item" id="item-${item.id}">
                     <div class="q-count-bar" style="width: ${barWidth}%"></div>
-                    <input type="checkbox" class="print-checkbox item-check" data-chap="${chap.id}" 
-                           onchange="syncPrintClass('${item.id}')">
+                    <input type="checkbox" class="print-checkbox item-check" data-chap="${chap.id}" onchange="syncPrintClass('${item.id}')">
                     <div class="content-display">$${item.latex}$</div>
                     <div class="item-actions">
                         <button class="action-btn" onclick="viewLinkedQuestions('${item.id}')" style="background: var(--primary); color: white; border: none; display: flex; align-items: center;">
@@ -228,40 +217,32 @@
                         <button class="action-btn" onclick="moveItem('${item.id}', -1)">↑</button>
                         <button class="action-btn" onclick="moveItem('${item.id}', 1)">↓</button>
                         <button class="action-btn" onclick="openEditModal('${item.id}')">Edit</button>
-                        <button class="action-btn delete-btn" onclick="deleteItem('${item.id}')">Del</button>
+                        <button class="action-btn" onclick="deleteItem('${item.id}')">Del</button>
                     </div>
-                </div>
-                `;
+                </div>`;
             }).join('');
 
             section.innerHTML = `
                 <div class="chapter-banner" onclick="toggleFold('${chap.id}')">
-                    <input type="checkbox" class="print-checkbox chapter-check" 
-                           onclick="event.stopPropagation()" onchange="toggleChapterItems('${chap.id}', this.checked)">
-                    ${chap.name}
-                    <span class="fold-icon">▼</span>
+                    <input type="checkbox" class="print-checkbox chapter-check" onclick="event.stopPropagation()" onchange="toggleChapterItems('${chap.id}', this.checked)">
+                    ${chap.name} <span class="fold-icon">▼</span>
                 </div>
                 <div class="knowledge-container">${itemsHtml}</div>
             `;
             lib.appendChild(section);
         });
-
         if (window.MathJax) MathJax.typesetPromise();
     }
 
-    // Modal & Action functions (Same as previous, just ensure they are on window)
-    window.toggleFold = (chapId) => document.getElementById(`sec-${chapId}`).classList.toggle('folded');
+    /* Global Window Scoped Functions for HTML buttons */
+    window.toggleFold = (id) => document.getElementById(`sec-${id}`).classList.toggle('folded');
     window.toggleSelectionMode = () => {
         document.body.classList.toggle('selection-mode');
-        document.getElementById('toggleSelectBtn').innerText = 
-            document.body.classList.contains('selection-mode') ? "Cancel Selection" : "Select to Print";
+        document.getElementById('toggleSelectBtn').innerText = document.body.classList.contains('selection-mode') ? "Cancel" : "Select to Print";
     };
     window.toggleChapterItems = (chapId, isChecked) => {
         const checkboxes = document.querySelectorAll(`.item-check[data-chap="${chapId}"]`);
-        checkboxes.forEach(cb => {
-            cb.checked = isChecked;
-            syncPrintClass(cb.closest('.knowledge-item').id.replace('item-', ''));
-        });
+        checkboxes.forEach(cb => { cb.checked = isChecked; syncPrintClass(cb.closest('.knowledge-item').id.replace('item-', '')); });
     };
     window.syncPrintClass = (itemId) => {
         const el = document.getElementById(`item-${itemId}`);
@@ -269,21 +250,17 @@
         el.classList.toggle('selected-for-print', el.querySelector('.item-check').checked);
         section.classList.toggle('has-selected-items', section.querySelectorAll('.selected-for-print').length > 0);
     };
-    window.executePrint = () => {
-        if (document.querySelectorAll('.selected-for-print').length === 0) return alert("Select items first.");
-        window.print();
-    };
+    window.executePrint = () => window.print();
+
     window.openModal = () => {
         document.getElementById('editTargetId').value = "";
-        document.getElementById('modalTitle').innerText = "Add New Knowledge";
         document.getElementById('latexInput').value = "";
-        document.getElementById('latexPreview').innerHTML = "";
+        updatePreview();
         document.getElementById('editModal').style.display = 'flex';
     };
     window.openEditModal = (id) => {
         const item = knowledgeBase.find(k => k.id === id);
         document.getElementById('editTargetId').value = id;
-        document.getElementById('modalTitle').innerText = "Edit Knowledge";
         document.getElementById('latexInput').value = item.latex;
         document.getElementById('chapSelect').value = item.categoryId;
         updatePreview();
@@ -296,65 +273,80 @@
         out.innerHTML = val ? '$' + val + '$' : "";
         if (window.MathJax) MathJax.typesetPromise([out]);
     };
+
     window.saveData = async () => {
         const id = document.getElementById('editTargetId').value;
         const latex = document.getElementById('latexInput').value;
         const catId = document.getElementById('chapSelect').value;
         if (id) await updateDoc(doc(db, "Knowledge", id), { latex, categoryId: catId });
         else await addDoc(collection(db, "Knowledge"), { latex, categoryId: catId, order: Date.now() });
-        closeModal();
-        await init();
+        closeModal(); await init();
     };
-    window.deleteItem = async (id) => {
-        if (confirm("Delete this?")) {
-            await deleteDoc(doc(db, "Knowledge", id));
-            await init();
-        }
-    };
+
+    window.deleteItem = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "Knowledge", id)); await init(); } };
+    
     window.moveItem = async (id, direction) => {
         const idx = knowledgeBase.findIndex(k => k.id === id);
         const targetIdx = idx + direction;
         if (targetIdx < 0 || targetIdx >= knowledgeBase.length) return;
-        const current = knowledgeBase[idx];
-        const swap = knowledgeBase[targetIdx];
+        const current = knowledgeBase[idx], swap = knowledgeBase[targetIdx];
         await updateDoc(doc(db, "Knowledge", current.id), { order: swap.order || 0 });
         await updateDoc(doc(db, "Knowledge", swap.id), { order: current.order || 0 });
         await init();
     };
 
-    // Question Viewer Logic
+    // --- POP-UP LOGIC: QUESTION VIEWER ---
     window.closeQModal = () => document.getElementById('qViewerModal').style.display = 'none';
-    window.toggleSolution = (btn, qId) => {
-        const solDiv = document.getElementById(`sol-${qId}`);
-        const hidden = solDiv.style.display === 'none';
-        solDiv.style.display = hidden ? 'block' : 'none';
-        btn.innerText = hidden ? "Hide Solution" : "S (Show Solution)";
-        if (hidden && window.MathJax) MathJax.typesetPromise([solDiv]);
+
+    window.toggleSingleSol = (btn) => {
+        const solBox = btn.closest('.q-card').querySelector('.sol-box');
+        const isHidden = solBox.style.display === 'none' || solBox.style.display === '';
+        solBox.style.display = isHidden ? 'block' : 'none';
+        
+        // Button label toggles between "S" and "Hide Solution"
+        btn.innerText = isHidden ? 'Hide Solution' : 'S';
+        btn.classList.toggle('active', isHidden);
+        
+        if (isHidden && window.MathJax) MathJax.typesetPromise([solBox]);
     };
+
     window.viewLinkedQuestions = async (kId) => {
         const container = document.getElementById('qViewerContent');
-        container.innerHTML = "<p>Loading...</p>";
+        container.innerHTML = "<p>Loading linked questions...</p>";
         document.getElementById('qViewerModal').style.display = 'flex';
-        const qRef = collection(db, "MathQuestion");
-        const qSnap = await getDocs(query(qRef, where("knowledgeIds", "array-contains", kId)));
-        if (qSnap.empty) {
-            container.innerHTML = "<p>No questions found.</p>";
-            return;
+
+        try {
+            const qRef = collection(db, "MathQuestion");
+            const qSnap = await getDocs(query(qRef, where("knowledgeIds", "array-contains", kId)));
+            
+            if (qSnap.empty) {
+                container.innerHTML = "<p>No questions linked to this concept.</p>";
+                return;
+            }
+
+            container.innerHTML = qSnap.docs.map((docSnap, index) => {
+                const qData = docSnap.data();
+                return `
+                    <div class="q-card">
+                        <div class="q-header-row">
+                            <span><strong>Question ${index + 1}</strong></span>
+                            <button class="toggle-sol-btn" onclick="toggleSingleSol(this)">S</button>
+                        </div>
+                        <div class="q-content-wrapper">
+                            <div class="q-text-part"><div class="q-body">${qData.latexQuestion || ""}</div></div>
+                            ${qData.diagramUrl ? `<div class="q-image-part"><img src="${qData.diagramUrl}"></div>` : ""}
+                        </div>
+                        <div class="sol-box">
+                            <div class="sol-header">Solution</div>
+                            <div class="s-content">${qData.latexSolution || ""}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            if (window.MathJax) MathJax.typesetPromise([container]);
+        } catch (err) {
+            container.innerHTML = "Error: " + err.message;
         }
-        container.innerHTML = qSnap.docs.map((docSnap, i) => {
-            const data = docSnap.data();
-            const qId = docSnap.id;
-            return `
-                <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 25px; background: #fff;">
-                    <div style="font-weight: bold; color: var(--primary); margin-bottom: 12px;">Question ${i+1}</div>
-                    <div style="font-size: 1.1rem; margin-bottom: 20px;">$${data.latexQuestion}$</div>
-                    ${data.diagramUrl ? `<img src="${data.diagramUrl}" style="max-width: 100%; margin-bottom: 20px;">` : ""}
-                    <button onclick="toggleSolution(this, '${qId}')" style="background: #fffbe6; border: 1px solid #ffe58f; padding: 6px 12px; cursor: pointer;">S (Show Solution)</button>
-                    <div id="sol-${qId}" style="display: none; padding: 20px; background: #f6ffed; margin-top: 15px;">$${data.latexSolution}$</div>
-                </div>
-            `;
-        }).join('');
-        if (window.MathJax) MathJax.typesetPromise([container]);
     };
 
     init();
