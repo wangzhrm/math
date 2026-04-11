@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AP Math - Backup & Recovery Center</title>
+    <style>
+        :root { --primary: #722ed1; --success: #52c41a; --danger: #ff4d4f; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 40px; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: var(--primary); border-bottom: 2px solid #f0f2f5; padding-bottom: 10px; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #eee; border-radius: 8px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; font-size: 14px; margin-right: 10px; }
+        .btn-backup { background: var(--primary); }
+        .btn-restore { background: var(--success); }
+        .btn-restore:disabled { background: #ccc; }
+        .status { margin-top: 15px; font-size: 14px; line-height: 1.6; }
+        .log { background: #fafafa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; margin-top: 10px; border: 1px solid #ddd; }
+        #fileInput { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Data Management Center</h1>
+    <p>备份并保存本地副本，以防数据库意外损坏。</p>
+
+    <div class="section">
+        <h3>1. 导出数据 (Export to Local)</h3>
+        <p>从 Firestore 读取所有集合并生成 JSON 文件。</p>
+        <button class="btn btn-backup" onclick="exportAllData()">🚀 开始全量备份</button>
+        <div id="backupStatus" class="status"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. 导入与恢复 (Import & Restore)</h3>
+        <p style="color: var(--danger);">警告：恢复操作将重新写入数据，请确保 JSON 格式正确。</p>
+        <input type="file" id="fileInput" accept=".json">
+        <div id="fileInfo" class="status"></div>
+        <button id="restoreBtn" class="btn btn-restore" disabled onclick="restoreAllData()">🔥 确认恢复到数据库</button>
+        <div id="restoreStatus" class="status"></div>
+    </div>
+
+    <div class="log" id="actionLog">等待操作...</div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // 沿用你的配置
+    const firebaseConfig = {
+        apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
+        authDomain: "ap-math-8783b.firebaseapp.com",
+        projectId: "ap-math-8783b",
+        storageBucket: "ap-math-8783b.firebasestorage.app",
+        messagingSenderId: "357604958030",
+        appId: "1:357604958030:web:b4bcd12bc9cccfefd6081f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const collectionsToBackup = ["Master", "Category", "Knowledge", "MathQuestion"];
+    let importedData = null;
+
+    // --- 导出逻辑 ---
+    window.exportAllData = async () => {
+        const logEl = document.getElementById('actionLog');
+        const statusEl = document.getElementById('backupStatus');
+        logEl.innerHTML = "正在启动备份...";
+        
+        try {
+            let fullBackup = {};
+
+            for (const colName of collectionsToBackup) {
+                logEl.innerHTML += `<br>读取集合: ${colName}...`;
+                const snap = await getDocs(collection(db, colName));
+                fullBackup[colName] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                logEl.innerHTML += ` 完成 (${fullBackup[colName].length} 条)`;
+            }
+
+            // 创建下载
+            const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const date = new Date().toISOString().split('T')[0];
+            a.href = url;
+            a.download = `AP_Math_Backup_${date}.json`;
+            a.click();
+
+            statusEl.innerHTML = `<b style="color:var(--success)">备份成功！文件已下载。</b>`;
+        } catch (err) {
+            statusEl.innerHTML = `<b style="color:var(--danger)">错误: ${err.message}</b>`;
+        }
+    };
+
+    // --- 读取本地文件 ---
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                importedData = JSON.parse(event.target.result);
+                let info = "文件解析成功，包含：<br>";
+                for(let key in importedData) {
+                    info += `- ${key}: ${importedData[key].length} 条记录<br>`;
+                }
+                document.getElementById('fileInfo').innerHTML = info;
+                document.getElementById('restoreBtn').disabled = false;
+            } catch (err) {
+                alert("JSON 文件格式不正确！");
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // --- 恢复逻辑 ---
+    window.restoreAllData = async () => {
+        if (!importedData || !confirm("确定要恢复数据吗？这将按 ID 覆盖现有文档！")) return;
+
+        const logEl = document.getElementById('actionLog');
+        const statusEl = document.getElementById('restoreStatus');
+        logEl.innerHTML = "开始恢复过程...";
+        document.getElementById('restoreBtn').disabled = true;
+
+        try {
+            for (const colName in importedData) {
+                const docs = importedData[colName];
+                logEl.innerHTML += `<br>正在恢复 ${colName} (${docs.length} 个文档)...`;
+                
+                for (const item of docs) {
+                    const { id, ...data } = item;
+                    // 使用 setDoc 保持原有的 ID
+                    await setDoc(doc(db, colName, id), data);
+                }
+                logEl.innerHTML += " 完毕。";
+            }
+            statusEl.innerHTML = `<b style="color:var(--success)">全部数据已成功恢复到 Firestore！</b>`;
+        } catch (err) {
+            statusEl.innerHTML = `<b style="color:var(--danger)">恢复失败: ${err.message}</b>`;
+            console.error(err);
+        } finally {
+            document.getElementById('restoreBtn').disabled = false;
+        }
+    };
+</script>
+
+</body>
+</html>
