@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AST 数据库全量管理中心</title>
+    <style>
+        :root { --primary: #1890ff; --success: #52c41a; --danger: #ff4d4f; --dark: #1f2937; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 50px 20px; margin: 0; }
+        .manager-card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.1); width: 100%; max-width: 650px; }
+        h1 { font-size: 26px; color: var(--dark); margin-bottom: 10px; text-align: center; font-weight: 800; }
+        .subtitle { color: #6b7280; text-align: center; margin-bottom: 30px; font-size: 14px; }
+        
+        .section { background: #fafafa; border: 1px solid #eaeaea; padding: 25px; border-radius: 15px; margin-bottom: 25px; transition: all 0.3s; }
+        .section:hover { border-color: var(--primary); background: #fff; }
+        .section h3 { margin-top: 0; font-size: 18px; color: var(--dark); display: flex; align-items: center; gap: 8px; }
+        
+        .desc { font-size: 13px; color: #888; margin-bottom: 15px; line-height: 1.5; }
+        
+        button { 
+            width: 100%; padding: 15px; border: none; border-radius: 10px; 
+            font-weight: bold; cursor: pointer; transition: all 0.2s;
+            font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        button:disabled { background: #d1d5db !important; cursor: not-allowed; }
+        
+        .btn-backup { background: var(--primary); color: white; }
+        .btn-backup:hover { background: #40a9ff; box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3); }
+        
+        .btn-restore { background: var(--success); color: white; }
+        .btn-restore:hover { background: #73d13d; box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3); }
+        
+        #log-area { 
+            margin-top: 25px; padding: 15px; background: #282c34; color: #abb2bf; 
+            border-radius: 10px; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; 
+            max-height: 220px; overflow-y: auto; white-space: pre-wrap; border: 1px solid #181a1f;
+        }
+        .file-input { margin-bottom: 15px; width: 100%; font-size: 13px; color: #555; }
+        
+        .log-time { color: #5c6370; margin-right: 8px; }
+        .log-success { color: #98c379; }
+        .log-error { color: #e06c75; }
+    </style>
+</head>
+<body>
+
+<div class="manager-card">
+    <h1>AST 数据管理中心</h1>
+    <div class="subtitle">支持 题目集 (MathQuestion) / 知识库 (Knowledge) / 章节树 (Category)</div>
+
+    <div class="section">
+        <h3>📦 数据备份 (Export)</h3>
+        <div class="desc">从 Firebase 云端抓取所有数据并打包下载。文件名将包含当前的日期和具体时间以便存档。</div>
+        <button class="btn-backup" id="exportBtn">生成全量备份文件 (.json)</button>
+    </div>
+
+    <div class="section">
+        <h3>恢复数据 (Restore)</h3>
+        <div class="desc">警告：此操作会根据备份文件内容更新或覆盖云端数据。请确保您上传的是由本系统生成的有效 JSON 文件。</div>
+        <input type="file" id="fileInput" class="file-input" accept=".json">
+        <button class="btn-restore" id="importBtn">立即从文件恢复数据</button>
+    </div>
+
+    <div id="log-area">等待指令...</div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // --- Firebase 配置 ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyC_5NX6W0yZY8INI1gtRoMiBRZD28qJ7dE",
+        authDomain: "uestc-4720a.firebaseapp.com",
+        projectId: "uestc-4720a",
+        appId: "1:937055851089:web:0a0fcd9b547b9daa7c9e70"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const log = (msg, type = 'info') => {
+        const area = document.getElementById('log-area');
+        const time = new Date().toLocaleTimeString();
+        let colorClass = '';
+        if (type === 'success') colorClass = 'log-success';
+        if (type === 'error') colorClass = 'log-error';
+        
+        area.innerHTML += `<div><span class="log-time">[${time}]</span><span class="${colorClass}">${msg}</span></div>`;
+        area.scrollTop = area.scrollHeight;
+    };
+
+    // --- 导出功能 ---
+    document.getElementById('exportBtn').onclick = async () => {
+        const btn = document.getElementById('exportBtn');
+        btn.disabled = true;
+        log("开始建立云端数据镜像...");
+
+        try {
+            const fullData = {
+                Category: {},
+                Knowledge: {},
+                MathQuestion: {},
+                meta: { 
+                    version: "3.2", 
+                    exportTimestamp: Date.now()
+                }
+            };
+
+            // 1. 抓取分类 (Category)
+            const catSnap = await getDocs(collection(db, "Category"));
+            catSnap.forEach(d => {
+                const data = d.data();
+                if (data.parent && data.parent.path) {
+                    data._parentPath = data.parent.path; // 处理引用
+                    delete data.parent;
+                }
+                fullData.Category[d.id] = data;
+            });
+            log(`已抓取分类树: ${catSnap.size} 条记录`);
+
+            // 2. 抓取知识库 (Knowledge)
+            const knSnap = await getDocs(collection(db, "Knowledge"));
+            knSnap.forEach(d => { fullData.Knowledge[d.id] = d.data(); });
+            log(`已抓取知识点: ${knSnap.size} 条记录`);
+
+            // 3. 抓取题目 (MathQuestion)
+            const qSnap = await getDocs(collection(db, "MathQuestion"));
+            qSnap.forEach(d => { fullData.MathQuestion[d.id] = d.data(); });
+            log(`已抓取题目数据: ${qSnap.size} 条记录`);
+
+            // --- 格式化文件名：AST_YYYY-MM-DD_HH-mm.json ---
+            const now = new Date();
+            const YYYY = now.getFullYear();
+            const MM = String(now.getMonth() + 1).padStart(2, '0');
+            const DD = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            
+            const fileName = `AST_${YYYY}-${MM}-${DD}_${hh}-${mm}.json`;
+
+            // 触发下载
+            const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            log(`✅ 备份已保存: ${fileName}`, 'success');
+
+        } catch (err) {
+            log("❌ 导出过程出错: " + err.message, 'error');
+        }
+        btn.disabled = false;
+    };
+
+    // --- 恢复功能 ---
+    document.getElementById('importBtn').onclick = async () => {
+        const fileInput = document.getElementById('fileInput');
+        if (!fileInput.files[0]) return alert("请先选择一个有效的备份文件 (.json)");
+        
+        if (!confirm("确定要启动恢复程序吗？这会覆盖云端当前的文档数据！")) return;
+
+        const btn = document.getElementById('importBtn');
+        btn.disabled = true;
+        log("正在解析备份文件...");
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+
+                // 1. 恢复 Category (父级优先)
+                if (data.Category) {
+                    log("正在同步目录结构...");
+                    for (const [id, content] of Object.entries(data.Category)) {
+                        if (content._parentPath) {
+                            content.parent = doc(db, content._parentPath);
+                            delete content._parentPath;
+                        }
+                        await setDoc(doc(db, "Category", id), content);
+                    }
+                }
+
+                // 2. 恢复 Knowledge
+                if (data.Knowledge) {
+                    log("正在同步知识点库...");
+                    for (const [id, content] of Object.entries(data.Knowledge)) {
+                        await setDoc(doc(db, "Knowledge", id), content);
+                    }
+                }
+
+                // 3. 恢复 MathQuestion
+                if (data.MathQuestion) {
+                    log("正在同步数学题目集...");
+                    for (const [id, content] of Object.entries(data.MathQuestion)) {
+                        // 修正 Firestore 无法直接解析的日期格式
+                        if (content.createdAt && typeof content.createdAt === 'string') {
+                            content.createdAt = new Date(content.createdAt);
+                        }
+                        await setDoc(doc(db, "MathQuestion", id), content);
+                    }
+                }
+
+                log("✨ 数据库全量恢复已完成！", 'success');
+                alert("恢复成功！数据已重置为备份时的状态。");
+
+            } catch (err) {
+                log("❌ 恢复失败: " + err.message, 'error');
+            }
+            btn.disabled = false;
+        };
+        reader.readAsText(fileInput.files[0]);
+    };
+</script>
+
+</body>
+</html>
