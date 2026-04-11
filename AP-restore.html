@@ -47,7 +47,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // 沿用你的配置
+    // Firebase 配置
     const firebaseConfig = {
         apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
         authDomain: "ap-math-8783b.firebaseapp.com",
@@ -63,7 +63,7 @@
     const collectionsToBackup = ["Master", "Category", "Knowledge", "MathQuestion"];
     let importedData = null;
 
-    // --- 导出逻辑 ---
+    // --- 导出逻辑 (已添加时间戳) ---
     window.exportAllData = async () => {
         const logEl = document.getElementById('actionLog');
         const statusEl = document.getElementById('backupStatus');
@@ -79,13 +79,18 @@
                 logEl.innerHTML += ` 完成 (${fullBackup[colName].length} 条)`;
             }
 
-            // 创建下载
             const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            const date = new Date().toISOString().split('T')[0];
+            
+            // 获取当前日期和时间
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0]; // 格式: 2026-04-11
+            const timeStr = now.getHours().toString().padStart(2, '0') + 
+                            now.getMinutes().toString().padStart(2, '0'); // 格式: 1430
+            
             a.href = url;
-            a.download = `AP_Math_Backup_${date}.json`;
+            a.download = `AP_Math_Backup_${dateStr}_${timeStr}.json`;
             a.click();
 
             statusEl.innerHTML = `<b style="color:var(--success)">备份成功！文件已下载。</b>`;
