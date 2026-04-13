@@ -5,53 +5,53 @@
 <title>Knowledge Library with Question Focus</title>
 <script>
 window.MathJax = {
-tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
-chtml: { displayAlign: 'left' }
+  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+  chtml: { displayAlign: 'left' }
 };
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <style>
 :root {
---primary: #722ed1;
---bg: #f0f2f5;
---text: #1f2937;
---danger: #ff4d4f;
---success: #52c41a;
---accent: #1890ff;
+  --primary: #722ed1;
+  --bg: #f0f2f5;
+  --text: #1f2937;
+  --danger: #ff4d4f;
+  --success: #52c41a;
+  --accent: #1890ff;
 }
 body {
-font-family: 'Segoe UI', system-ui, sans-serif;
-background: var(--bg);
-color: var(--text);
-margin: 0;
-padding: 40px 20px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 40px 20px;
 }
 .container {
-max-width: 900px;
-margin: auto;
+  max-width: 900px;
+  margin: auto;
 }
 .header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 .btn-group {
-display: flex;
-gap: 10px;
+  display: flex;
+  gap: 10px;
 }
 button {
-padding: 10px 20px;
-border-radius: 8px;
-font-weight: 600;
-cursor: pointer;
-border: none;
-transition: opacity 0.2s;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
 }
 button:hover { opacity: 0.9; }
 .add-btn {
-background: var(--primary);
-color: white;
+  background: var(--primary);
+  color: white;
 }
 
 /* --- Filter Panel Styles --- */
@@ -74,132 +74,132 @@ color: white;
 
 /* --- Knowledge Library Styles --- */
 .chapter-section {
-background: white;
-border-radius: 12px;
-margin-bottom: 20px;
-box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-border: 1px solid #e5e7eb;
-overflow: hidden;
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
 }
 .chapter-banner {
-background: #f8fafc;
-padding: 18px 25px;
-font-size: 1.2rem;
-font-weight: 800;
-color: var(--primary);
-display: flex;
-align-items: center;
-border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+  padding: 18px 25px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .knowledge-container {
-padding: 5px 25px;
+  padding: 5px 25px;
 }
 
 .knowledge-item {
-padding: 20px 15px;
-border-bottom: 1px solid #f1f5f9;
-display: flex;
-align-items: flex-start;
-gap: 15px;
-transition: background 0.4s ease;
+  padding: 20px 15px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  transition: background 0.4s ease;
 }
 
 .content-display {
-font-size: 1.1rem;
-flex: 1;
-line-height: 1.6;
+  font-size: 1.1rem;
+  flex: 1;
+  line-height: 1.6;
 }
 .item-actions {
-display: flex;
-gap: 5px;
-flex-shrink: 0;
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
 }
 .action-btn {
-background: #fff;
-border: 1px solid #d1d5db;
-padding: 6px 10px;
-border-radius: 4px;
-font-size: 11px;
-cursor: pointer;
-font-weight: bold;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: bold;
 }
 .q-btn {
-background: #e6f7ff;
-color: #1890ff;
-border-color: #91d5ff;
-font-size: 13px;
+  background: #e6f7ff;
+  color: #1890ff;
+  border-color: #91d5ff;
+  font-size: 13px;
 }
 
 /* Modal Styles */
 .modal-overlay {
-position: fixed;
-inset: 0;
-background: rgba(0,0,0,0.7);
-display: none;
-justify-content: center;
-align-items: center;
-z-index: 2000;
-padding: 20px;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  padding: 20px;
 }
 .modal-content {
-background: white;
-width: 850px;
-max-width: 100%;
-border-radius: 16px;
-padding: 30px;
-max-height: 90vh;
-overflow-y: auto;
-position: relative;
+  background: white;
+  width: 850px;
+  max-width: 100%;
+  border-radius: 16px;
+  padding: 30px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
 }
 .q-focus-card {
-border: 1px solid #eee;
-border-radius: 10px;
-padding: 20px;
-margin-bottom: 20px;
-background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  background: #fafafa;
 }
 .sol-container {
-margin-top: 15px;
-display: none;
-padding: 15px;
-background: #f6ffed;
-border: 1px solid #b7eb8f;
-border-radius: 6px;
+  margin-top: 15px;
+  display: none;
+  padding: 15px;
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 6px;
 }
 .sol-btn {
-margin-top: 10px;
-background: #8c8c8c;
-color: white;
-font-size: 12px;
-padding: 5px 12px;
+  margin-top: 10px;
+  background: #8c8c8c;
+  color: white;
+  font-size: 12px;
+  padding: 5px 12px;
 }
 .close-x {
-position: absolute;
-right: 20px;
-top: 20px;
-font-size: 24px;
-cursor: pointer;
-color: #999;
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
 }
 .knowledge-header-tip {
-background: #f9f0ff;
-border: 1px solid #d3adf7;
-padding: 15px;
-border-radius: 8px;
-margin-bottom: 20px;
-font-weight: 500;
+  background: #f9f0ff;
+  border: 1px solid #d3adf7;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-weight: 500;
 }
 .modal-header-actions {
-position: absolute;
-right: 80px;
-top: 25px;
+  position: absolute;
+  right: 80px;
+  top: 25px;
 }
 .export-btn {
-background: #fa8c16;
-color: white;
-font-size: 12px;
-padding: 5px 12px;
+  background: #fa8c16;
+  color: white;
+  font-size: 12px;
+  padding: 5px 12px;
 }
 </style>
 </head>
@@ -257,12 +257,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
-apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
-authDomain: "ap-math-8783b.firebaseapp.com",
-projectId: "ap-math-8783b",
-storageBucket: "ap-math-8783b.firebasestorage.app",
-messagingSenderId: "357604958030",
-appId: "1:357604958030:web:b4bcd12bc9cccfefd6081f"
+  apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
+  authDomain: "ap-math-8783b.firebaseapp.com",
+  projectId: "ap-math-8783b",
+  storageBucket: "ap-math-8783b.firebasestorage.app",
+  messagingSenderId: "357604958030",
+  appId: "1:357604958030:web:b4bcd12bc9cccfefd6081f"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -272,6 +272,7 @@ let chapters = [];
 let knowledgeBase = [];
 let allQuestions = [];
 let selectedChapterIds = new Set();
+let filtersInitialized = false; // Prevents filters from resetting after every action
 
 async function init() {
     await fetchData();
@@ -310,10 +311,17 @@ function generateChapterCheckboxes() {
     );
 
     activeChapters.forEach(chap => {
-        selectedChapterIds.add(chap.id);
+        // Default to checking everything ONLY on the very first page load
+        if (!filtersInitialized) {
+            selectedChapterIds.add(chap.id);
+        }
+
         const label = document.createElement('label');
         label.className = "filter-label";
-        label.innerHTML = `<input type="checkbox" class="chap-filter-cb" value="${chap.id}" checked> ${chap.name}`;
+        
+        // Use the Set state to determine if it should be checked
+        const isChecked = selectedChapterIds.has(chap.id) ? 'checked' : '';
+        label.innerHTML = `<input type="checkbox" class="chap-filter-cb" value="${chap.id}" ${isChecked}> ${chap.name}`;
         
         label.querySelector('input').addEventListener('change', (e) => {
             if (e.target.checked) selectedChapterIds.add(e.target.value);
@@ -322,6 +330,8 @@ function generateChapterCheckboxes() {
         });
         container.appendChild(label);
     });
+
+    filtersInitialized = true; // Mark as initialized
 }
 
 window.toggleAllChapters = (show) => {
@@ -446,13 +456,33 @@ window.deleteItem = async (id) => {
 };
 
 window.moveItem = async (id, dir) => {
-    const idx = knowledgeBase.findIndex(k => k.id === id);
-    const target = idx + dir;
-    if (target < 0 || target >= knowledgeBase.length) return;
-    const currentId = knowledgeBase[idx].id;
-    const swapId = knowledgeBase[target].id;
-    await updateDoc(doc(db, "Knowledge", currentId), { order: target });
-    await updateDoc(doc(db, "Knowledge", swapId), { order: idx });
+    const item = knowledgeBase.find(k => k.id === id);
+    if (!item) return;
+
+    // Filter down to ONLY items in the same chapter
+    const chapterItems = knowledgeBase.filter(k => k.categoryId === item.categoryId);
+    const idx = chapterItems.findIndex(k => k.id === id);
+    const targetIdx = idx + dir;
+
+    // Prevent moving out of bounds within this specific chapter
+    if (targetIdx < 0 || targetIdx >= chapterItems.length) return;
+
+    const swapItem = chapterItems[targetIdx];
+
+    // Safely grab their current orders (fallback to index if undefined)
+    let currentOrder = item.order !== undefined ? item.order : idx;
+    let swapOrder = swapItem.order !== undefined ? swapItem.order : targetIdx;
+
+    // Force stagger if orders are identical in database
+    if (currentOrder === swapOrder) {
+        currentOrder = idx;
+        swapOrder = targetIdx;
+    }
+
+    // Swap their order values in Firestore
+    await updateDoc(doc(db, "Knowledge", item.id), { order: swapOrder });
+    await updateDoc(doc(db, "Knowledge", swapItem.id), { order: currentOrder });
+
     await init();
 };
 
