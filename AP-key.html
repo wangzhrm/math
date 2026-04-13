@@ -111,17 +111,28 @@
         window.refreshData = async () => {
             const btn = document.getElementById('refreshBtn');
             if(btn) btn.innerText = "Refetching...";
+            
+            // Save the current scroll position before refreshing
+            const scrollY = window.scrollY || document.documentElement.scrollTop;
+
             try {
                 const snap = await getDocs(collection(db, "MathQuestion"));
                 allFetchedQuestions = [];
                 snap.forEach(docSnap => allFetchedQuestions.push({ id: docSnap.id, ...docSnap.data() }));
                 allFetchedQuestions.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-                renderCurrentQuestions();
+                
+                // Await the render so MathJax can finish processing heights
+                await window.renderCurrentQuestions();
             } catch (err) { console.error(err); } 
-            finally { if(btn) btn.innerText = "🔄 Refresh"; }
+            finally { 
+                if(btn) btn.innerText = "🔄 Refresh"; 
+                // Restore the scroll position exactly where it was
+                window.scrollTo(0, scrollY);
+            }
         };
 
-        window.renderCurrentQuestions = () => {
+        // Made this async to wait for MathJax layout calculations
+        window.renderCurrentQuestions = async () => {
             const container = document.getElementById('questionList');
             const selectedIds = Array.from(document.querySelectorAll('.filter-select')).map(s => s.value).filter(v => v !== "");
             container.innerHTML = "";
@@ -137,7 +148,6 @@
                 
                 let knowHtml = qKnowIds.map(kid => {
                     const k = allKnowledge.find(kn => kn.id === kid);
-                    // Use innerHTML support for tags like <br>
                     return k ? `<div class="know-tag" onclick="enterFocusMode('${k.id}')" style="cursor:pointer">${k.latex}</div>` : "";
                 }).join("");
 
@@ -157,7 +167,10 @@
                     </div>`;
                 container.appendChild(card);
             });
-            if (window.MathJax) MathJax.typesetPromise([container]).catch(err => console.log(err));
+            
+            if (window.MathJax) {
+                await MathJax.typesetPromise([container]).catch(err => console.log(err));
+            }
         };
 
         window.renderViewLibrary = () => {
@@ -189,7 +202,7 @@
         window.updateKnowPreview = () => {
             const input = document.getElementById('knowLatex').value;
             const preview = document.getElementById('knowPreview');
-            preview.innerHTML = input; // Directly use input to support <br>
+            preview.innerHTML = input; 
             if (window.MathJax) MathJax.typesetPromise([preview]).catch(err => console.log(err));
         };
 
@@ -335,6 +348,7 @@
     <div id="app-wrapper">
         <div id="main-content-view">
             <div class="floating-actions">
+                <button id="refreshBtn" onclick="window.refreshData()" class="primary-btn" style="background:var(--success);">🔄 Refresh</button>
                 <button onclick="document.getElementById('viewLibraryModal').style.display='flex'; renderViewLibrary();" class="primary-btn" style="background:#fa8c16">View Library</button>
                 <button onclick="document.getElementById('knowModal').style.display='flex'" class="primary-btn" style="background:#722ed1">Add Knowledge</button>
             </div>
@@ -342,8 +356,7 @@
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div style="display:flex; align-items: center; gap: 15px;">
                     <h1 style="margin:0;">Question Bank</h1>
-                    <button id="refreshBtn" onclick="window.refreshData()" class="primary-btn" style="background:var(--success);">🔄 Refresh</button>
-                </div>
+                    </div>
                 <button class="primary-btn" style="background:var(--danger);" onclick="location.reload()">Logout</button>
             </div>
 
