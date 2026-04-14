@@ -106,13 +106,13 @@
             const snap = await getDocs(collection(db, "Knowledge"));
             allKnowledge = [];
             snap.forEach(d => allKnowledge.push({ id: d.id, ...d.data() }));
+            // Initial Sort by Order
+            allKnowledge.sort((a, b) => (a.order || 0) - (b.order || 0));
         }
 
         window.refreshData = async () => {
             const btn = document.getElementById('refreshBtn');
             if(btn) btn.innerText = "Refetching...";
-            
-            // Save the current scroll position before refreshing
             const scrollY = window.scrollY || document.documentElement.scrollTop;
 
             try {
@@ -120,18 +120,14 @@
                 allFetchedQuestions = [];
                 snap.forEach(docSnap => allFetchedQuestions.push({ id: docSnap.id, ...docSnap.data() }));
                 allFetchedQuestions.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-                
-                // Await the render so MathJax can finish processing heights
                 await window.renderCurrentQuestions();
             } catch (err) { console.error(err); } 
             finally { 
                 if(btn) btn.innerText = "🔄 Refresh"; 
-                // Restore the scroll position exactly where it was
                 window.scrollTo(0, scrollY);
             }
         };
 
-        // Made this async to wait for MathJax layout calculations
         window.renderCurrentQuestions = async () => {
             const container = document.getElementById('questionList');
             const selectedIds = Array.from(document.querySelectorAll('.filter-select')).map(s => s.value).filter(v => v !== "");
@@ -146,7 +142,14 @@
                 const card = document.createElement('div');
                 card.className = "q-card";
                 
-                let knowHtml = qKnowIds.map(kid => {
+                // Sort tags based on the knowledge library order
+                let sortedKnowIds = [...qKnowIds].sort((a, b) => {
+                    const kA = allKnowledge.find(k => k.id === a);
+                    const kB = allKnowledge.find(k => k.id === b);
+                    return (kA?.order || 0) - (kB?.order || 0);
+                });
+
+                let knowHtml = sortedKnowIds.map(kid => {
                     const k = allKnowledge.find(kn => kn.id === kid);
                     return k ? `<div class="know-tag" onclick="enterFocusMode('${k.id}')" style="cursor:pointer">${k.latex}</div>` : "";
                 }).join("");
@@ -179,11 +182,14 @@
             const list = document.getElementById('viewKnowList');
             list.innerHTML = "";
 
+            // Filter AND Sort by order
             allKnowledge.filter(k => {
                 const ms = k.latex.toLowerCase().includes(search);
                 const mc = !catFilter || k.categoryId === catFilter;
                 return ms && mc;
-            }).forEach(k => {
+            })
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+            .forEach(k => {
                 const item = document.createElement('div');
                 item.className = "search-item";
                 item.innerHTML = `
@@ -210,7 +216,13 @@
             const content = document.getElementById('knowLatex').value;
             const catId = document.getElementById('knowCategory').value;
             if(!content || !catId) return alert("Please provide both content and a Chapter.");
-            await addDoc(collection(db, "Knowledge"), { latex: content, categoryId: catId, createdAt: new Date() });
+            // Store new items at the end of the order
+            await addDoc(collection(db, "Knowledge"), { 
+                latex: content, 
+                categoryId: catId, 
+                order: allKnowledge.length,
+                createdAt: new Date() 
+            });
             document.getElementById('knowModal').style.display = 'none';
             document.getElementById('knowLatex').value = "";
             document.getElementById('knowPreview').innerHTML = "";
@@ -232,7 +244,14 @@
             const linkedIds = currentQ?.knowledgeIds || [];
 
             list.innerHTML = "";
-            allKnowledge.filter(k => (k.latex.toLowerCase().includes(search)) && (!catFilter || k.categoryId === catFilter)).forEach(k => {
+            
+            // Filter AND Sort by order for the Link Popup
+            allKnowledge.filter(k => 
+                (k.latex.toLowerCase().includes(search)) && 
+                (!catFilter || k.categoryId === catFilter)
+            )
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+            .forEach(k => {
                 const isLinked = linkedIds.includes(k.id);
                 const item = document.createElement('div');
                 item.className = "search-item" + (isLinked ? " linked-item" : "");
@@ -356,7 +375,7 @@
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div style="display:flex; align-items: center; gap: 15px;">
                     <h1 style="margin:0;">Question Bank</h1>
-                    </div>
+                </div>
                 <button class="primary-btn" style="background:var(--danger);" onclick="location.reload()">Logout</button>
             </div>
 
