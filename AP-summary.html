@@ -5,7 +5,11 @@
 <title>Knowledge Library with Question Focus</title>
 <script>
 window.MathJax = {
-  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+  tex: { 
+    inlineMath: [['$', '$'], ['\\(', '\\)']], 
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
   chtml: { displayAlign: 'left' }
 };
 </script>
@@ -159,6 +163,10 @@ button:hover { opacity: 0.9; }
   margin-bottom: 20px;
   background: #fafafa;
 }
+.q-text {
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
 .sol-container {
   margin-top: 15px;
   display: none;
@@ -166,6 +174,7 @@ button:hover { opacity: 0.9; }
   background: #f6ffed;
   border: 1px solid #b7eb8f;
   border-radius: 6px;
+  line-height: 1.6;
 }
 .sol-btn {
   margin-top: 10px;
@@ -272,7 +281,7 @@ let chapters = [];
 let knowledgeBase = [];
 let allQuestions = [];
 let selectedChapterIds = new Set();
-let filtersInitialized = false; // Prevents filters from resetting after every action
+let filtersInitialized = false;
 
 async function init() {
     await fetchData();
@@ -305,21 +314,17 @@ function generateChapterCheckboxes() {
     const container = document.getElementById('chapterFilterList');
     container.innerHTML = "";
     
-    // Only show chapters that actually have knowledge items
     const activeChapters = chapters.filter(chap => 
         knowledgeBase.some(k => k.categoryId === chap.id)
     );
 
     activeChapters.forEach(chap => {
-        // Default to checking everything ONLY on the very first page load
         if (!filtersInitialized) {
             selectedChapterIds.add(chap.id);
         }
 
         const label = document.createElement('label');
         label.className = "filter-label";
-        
-        // Use the Set state to determine if it should be checked
         const isChecked = selectedChapterIds.has(chap.id) ? 'checked' : '';
         label.innerHTML = `<input type="checkbox" class="chap-filter-cb" value="${chap.id}" ${isChecked}> ${chap.name}`;
         
@@ -331,7 +336,7 @@ function generateChapterCheckboxes() {
         container.appendChild(label);
     });
 
-    filtersInitialized = true; // Mark as initialized
+    filtersInitialized = true;
 }
 
 window.toggleAllChapters = (show) => {
@@ -348,7 +353,6 @@ function renderUI() {
     const lib = document.getElementById('knowledgeLibrary');
     lib.innerHTML = "";
 
-    // Calculate Frequencies for Bar Backgrounds
     const counts = {};
     knowledgeBase.forEach(k => {
         counts[k.id] = allQuestions.filter(q => q.knowledgeIds?.includes(k.id)).length;
@@ -392,12 +396,12 @@ function renderUI() {
     if (window.MathJax) MathJax.typesetPromise();
 }
 
-// Window functions
 window.openQuestionFocus = (kId) => {
     const knowledge = knowledgeBase.find(k => k.id === kId);
     const linkedQs = allQuestions.filter(q => q.knowledgeIds?.includes(kId));
     document.getElementById('modalKnowledgeContext').innerHTML = `Focusing on: ${knowledge.latex}`;
     const listContainer = document.getElementById('modalQuestionList');
+    
     if (linkedQs.length === 0) {
         listContainer.innerHTML = "<p>No questions currently linked to this concept.</p>";
     } else {
@@ -410,8 +414,13 @@ window.openQuestionFocus = (kId) => {
         </div>
         `).join('');
     }
+    
     document.getElementById('questionModal').style.display = 'flex';
-    if (window.MathJax) MathJax.typesetPromise([listContainer, document.getElementById('modalKnowledgeContext')]);
+    
+    // CRITICAL: Force MathJax to scan the new modal content
+    if (window.MathJax) {
+        MathJax.typesetPromise([listContainer, document.getElementById('modalKnowledgeContext')]);
+    }
 };
 
 window.toggleSolution = (btn) => {
@@ -419,6 +428,8 @@ window.toggleSolution = (btn) => {
     const isHidden = sol.style.display === 'none' || sol.style.display === '';
     sol.style.display = isHidden ? 'block' : 'none';
     btn.innerText = isHidden ? 'Hide Solution' : 'View Solution';
+    // Re-typeset solution when revealed in case it was missed
+    if (isHidden && window.MathJax) MathJax.typesetPromise([sol]);
 };
 
 window.closeQuestionModal = () => document.getElementById('questionModal').style.display = 'none';
@@ -459,30 +470,23 @@ window.moveItem = async (id, dir) => {
     const item = knowledgeBase.find(k => k.id === id);
     if (!item) return;
 
-    // Filter down to ONLY items in the same chapter
     const chapterItems = knowledgeBase.filter(k => k.categoryId === item.categoryId);
     const idx = chapterItems.findIndex(k => k.id === id);
     const targetIdx = idx + dir;
 
-    // Prevent moving out of bounds within this specific chapter
     if (targetIdx < 0 || targetIdx >= chapterItems.length) return;
 
     const swapItem = chapterItems[targetIdx];
-
-    // Safely grab their current orders (fallback to index if undefined)
     let currentOrder = item.order !== undefined ? item.order : idx;
     let swapOrder = swapItem.order !== undefined ? swapItem.order : targetIdx;
 
-    // Force stagger if orders are identical in database
     if (currentOrder === swapOrder) {
         currentOrder = idx;
         swapOrder = targetIdx;
     }
 
-    // Swap their order values in Firestore
     await updateDoc(doc(db, "Knowledge", item.id), { order: swapOrder });
     await updateDoc(doc(db, "Knowledge", swapItem.id), { order: currentOrder });
-
     await init();
 };
 
@@ -492,7 +496,9 @@ window.exportCurrentView = () => {
     const clone = questionsContainer.cloneNode(true);
     clone.querySelectorAll('.sol-btn, .sol-container').forEach(el => el.remove());
     
-    const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body { font-family: sans-serif; padding: 40px; } .knowledge-header-tip { background: #f9f0ff; border: 1px solid #d3adf7; padding: 15px; border-radius: 8px; margin-bottom: 20px; } .q-focus-card { border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 10px; }</style></head><body>${knowledgeElem.innerHTML}${clone.innerHTML}</body></html>`;
+    const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
+    <style>body { font-family: sans-serif; padding: 40px; } .knowledge-header-tip { background: #f9f0ff; border: 1px solid #d3adf7; padding: 15px; border-radius: 8px; margin-bottom: 20px; } .q-focus-card { border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 10px; }</style></head><body>${knowledgeElem.innerHTML}${clone.innerHTML}</body></html>`;
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
