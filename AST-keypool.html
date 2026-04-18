@@ -22,7 +22,6 @@
         :root { --primary: #1890ff; --bg: #f4f7f9; --text: #1f2937; --danger: #ff4d4f; --accent: #722ed1; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
         
-        /* Increased container width to prevent crowding */
         .container { max-width: 1200px; margin: auto; }
         
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; gap: 10px; flex-wrap: wrap; }
@@ -54,9 +53,9 @@
         }
         .knowledge-item:last-child { border-bottom: none; }
         
-        .content-display { font-size: 1.1rem; flex: 1; min-width: 0; line-height: 1.6; }
+        /* whitespace: pre-wrap ensures line breaks in your text are preserved */
+        .content-display { font-size: 1.1rem; flex: 1; min-width: 0; line-height: 1.6; white-space: pre-wrap; }
 
-        /* Modified actions to stay above content and remain clickable */
         .item-actions { 
             display: flex; 
             gap: 5px; 
@@ -65,7 +64,7 @@
             padding-top: 5px;
             position: relative;
             z-index: 10;
-            background: white; /* Ensures buttons aren't visually obscured by lines */
+            background: white;
         } 
         .action-btn { background: #fff; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
         .action-btn:hover { background: #f3f4f6; }
@@ -76,7 +75,7 @@
         body.selection-mode .item-actions, body.selection-mode .add-btn { display: none; }
         body.selection-mode .do-print-btn { display: inline-block; }
 
-        .preview-box { margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px dashed var(--accent); min-height: 60px; width: 100%; box-sizing: border-box; }
+        .preview-box { margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px dashed var(--accent); min-height: 60px; width: 100%; box-sizing: border-box; white-space: pre-wrap; }
 
         @media print {
             body { background: white; padding: 0; }
@@ -111,8 +110,8 @@
             <select id="chapSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;"></select>
         </div>
         <div style="margin-bottom:15px;">
-            <label>LaTeX</label>
-            <textarea id="latexInput" oninput="updatePreview()" style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace;"></textarea>
+            <label>Content (Use $ for LaTeX)</label>
+            <textarea id="latexInput" oninput="updatePreview()" placeholder="Example: The mean is $\bar{x} = 10$" style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace;"></textarea>
         </div>
         <label>Preview:</label>
         <div id="latexPreview" class="preview-box"></div>
@@ -125,9 +124,8 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // Your AST Firebase Config
     const firebaseConfig = {
         apiKey: "AIzaSyC_5NX6W0yZY8INI1gtRoMiBRZD28qJ7dE",
         authDomain: "uestc-4720a.firebaseapp.com",
@@ -170,11 +168,12 @@
             section.className = "chapter-section";
             section.id = `sec-${chap.id}`;
             
+            // FIXED: Removed hardcoded $$ so that plain text renders alongside LaTeX symbols
             let itemsHtml = items.map(item => `
                 <div class="knowledge-item" id="item-${item.id}">
                     <input type="checkbox" class="print-checkbox item-check" data-chap="${chap.id}" 
                            onchange="syncPrintClass('${item.id}')">
-                    <div class="content-display">$${item.latex}$</div>
+                    <div class="content-display">${item.latex}</div>
                     <div class="item-actions">
                         <button class="action-btn" onclick="moveItem('${item.id}', -1)">↑</button>
                         <button class="action-btn" onclick="moveItem('${item.id}', 1)">↓</button>
@@ -199,6 +198,7 @@
         if (window.MathJax) MathJax.typesetPromise();
     }
 
+    // Window Functions
     window.toggleFold = (chapId) => document.getElementById(`sec-${chapId}`).classList.toggle('folded');
 
     window.toggleSelectionMode = () => {
@@ -250,7 +250,8 @@
     window.updatePreview = () => {
         const val = document.getElementById('latexInput').value;
         const out = document.getElementById('latexPreview');
-        out.innerHTML = val ? '$' + val + '$' : "";
+        // FIXED: Preview shows the exact string so MathJax can find the $ markers
+        out.innerHTML = val; 
         if (window.MathJax) MathJax.typesetPromise([out]);
     };
 
