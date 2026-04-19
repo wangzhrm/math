@@ -33,7 +33,7 @@ body {
   margin: auto; 
 }
 
-/* --- Student Management Panel --- */
+/* --- Management Panel --- */
 .management-panel {
   background: white;
   padding: 25px;
@@ -75,11 +75,9 @@ input, select {
   cursor: pointer;
   transition: 0.2s;
 }
-.btn-danger:hover {
-  background: #fff1f0;
-}
+.btn-danger:hover { background: #fff1f0; }
 
-/* --- Knowledge Library Styles (From Webpage 2) --- */
+/* --- Library Styles --- */
 .chapter-section {
   background: white;
   border-radius: 12px;
@@ -94,25 +92,40 @@ input, select {
   font-size: 1.2rem;
   font-weight: 800;
   color: var(--primary);
-  display: flex;
-  align-items: center;
   border-bottom: 1px solid #f1f5f9;
 }
-.knowledge-container {
-  padding: 5px 25px;
-}
+.knowledge-container { padding: 5px 25px; }
+
+/* --- Knowledge Item & Animations --- */
 .knowledge-item {
   padding: 20px 15px;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
-  align-items: center; /* Centered items vertically */
+  align-items: center; 
   gap: 15px;
   cursor: pointer;
-  transition: background 0.2s ease, border-left 0.2s;
-  border-left: 6px solid transparent; /* Placeholder for mastery line */
+  transition: all 0.2s ease;
+  border-left: 6px solid transparent;
+  position: relative;
 }
 .knowledge-item:last-child { border-bottom: none; }
 .knowledge-item:hover { background: #fcfcfc; }
+
+/* Physical "Click" effect */
+.knowledge-item:active {
+  transform: scale(0.99);
+  background: #f0f0f0;
+}
+
+/* Loading State */
+.knowledge-item.is-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.knowledge-item.is-loading .status-indicator {
+  color: var(--accent);
+  font-style: italic;
+}
 
 .content-display {
   font-size: 1.1rem;
@@ -120,21 +133,29 @@ input, select {
   line-height: 1.6;
 }
 
-/* --- Mastery States --- */
-.knowledge-item.mastered {
-  background: var(--success-bg);
-  border-left: 6px solid var(--success);
-}
-.knowledge-item.mastered:hover {
-  background: #eaffea;
-}
 .status-indicator {
   font-size: 0.85rem;
   font-weight: 700;
   color: #999;
   flex-shrink: 0;
+  transition: all 0.3s ease;
 }
-.mastered .status-indicator { color: var(--success); }
+
+/* Mastery States */
+.knowledge-item.mastered {
+  background: var(--success-bg);
+  border-left: 6px solid var(--success);
+}
+.knowledge-item.mastered .status-indicator { 
+  color: var(--success); 
+  animation: statusPop 0.3s ease;
+}
+
+@keyframes statusPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
 
 .debug-msg {
   background: #fffbe6;
@@ -143,7 +164,6 @@ input, select {
   border-radius: 8px;
   margin-bottom: 20px;
   color: #d46b08;
-  font-size: 0.9rem;
 }
 </style>
 </head>
@@ -168,13 +188,12 @@ input, select {
             </div>
         </div>
     </div>
-
     <div id="libraryContainer"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
@@ -199,10 +218,8 @@ async function startApp() {
 }
 
 async function loadBaseData() {
-    // 1. Fetch Categories using the exact structure and sorting from Webpage 2
     const catSnap = await getDocs(collection(db, "Category"));
     const allCats = catSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    
     const root = allCats.find(c => c.name?.toLowerCase().includes("chapter"));
     
     if (root) {
@@ -211,17 +228,14 @@ async function loadBaseData() {
             return pid === root.id;
         }).sort((a, b) => (a.order || 0) - (b.order || 0));
     } else {
-        // Fallback just in case
         chapters = allCats.filter(c => !c.parent).sort((a, b) => (a.order || 0) - (b.order || 0));
     }
 
-    // 2. Fetch Knowledge - keeping robust ID extraction but applying the Webpage 2 sorting
     const knoSnap = await getDocs(collection(db, "Knowledge"));
     knowledgeItems = knoSnap.docs.map(d => {
         const data = d.data();
         let safeCatId = data.categoryId;
         if (safeCatId && typeof safeCatId === 'object' && safeCatId.id) safeCatId = safeCatId.id; 
-        
         return { 
             id: d.id, 
             ...data, 
@@ -229,7 +243,6 @@ async function loadBaseData() {
         };
     }).sort((a,b) => (a.order||0) - (b.order||0));
 
-    // 3. Fetch Mastery Records
     const mastSnap = await getDocs(collection(db, "MasteryRecords"));
     masteryRecords = mastSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
@@ -238,88 +251,72 @@ async function loadStudents() {
     const stuSnap = await getDocs(collection(db, "Students"));
     const dropdown = document.getElementById('studentDropdown');
     const currentSelection = dropdown.value;
-    
     dropdown.innerHTML = '<option value="">-- Select Student --</option>';
     stuSnap.docs.forEach(doc => {
-        const data = doc.data();
         const opt = document.createElement('option');
         opt.value = doc.id;
-        opt.textContent = data.name;
+        opt.textContent = doc.data().name;
         dropdown.appendChild(opt);
     });
-    // Reselect previous if still exists
-    if([...dropdown.options].some(o => o.value === currentSelection)) {
-        dropdown.value = currentSelection;
-    }
+    if([...dropdown.options].some(o => o.value === currentSelection)) dropdown.value = currentSelection;
 }
 
 window.createNewStudent = async () => {
     const input = document.getElementById('studentNameInput');
     const name = input.value.trim();
     if (!name) return alert("Please enter a name");
-    
     try {
         await addDoc(collection(db, "Students"), { name: name, createdAt: new Date() });
         input.value = "";
         await loadStudents();
-        alert("Student saved to database.");
-    } catch (e) {
-        console.error("Error adding student: ", e);
-    }
+    } catch (e) { console.error(e); }
 };
 
 window.deleteStudent = async () => {
     const dropdown = document.getElementById('studentDropdown');
     const studentId = dropdown.value;
-    
-    if (!studentId) {
-        return alert("Please select a student from the dropdown first.");
-    }
-
-    const studentName = dropdown.options[dropdown.selectedIndex].text;
-
-    // Ask for confirmation
-    if (confirm(`Are you sure you want to permanently delete ${studentName} and all of their mastery records?`)) {
+    if (!studentId) return alert("Select a student first.");
+    if (confirm(`Delete student and all mastery records?`)) {
         try {
-            // 1. Delete the student document
             await deleteDoc(doc(db, "Students", studentId));
-            
-            // 2. Delete all mastery records associated with this student
             const recordsToDelete = masteryRecords.filter(r => r.studentId === studentId);
-            for (const record of recordsToDelete) {
-                await deleteDoc(doc(db, "MasteryRecords", record.id));
-            }
-
-            // 3. Refresh the UI
-            alert(`${studentName} has been deleted.`);
-            dropdown.value = ""; // Reset selection
-            await loadStudents(); // Reload dropdown
-            await loadBaseData(); // Refresh mastery arrays internally
-            renderLibrary();      // Clear the display
-            
-        } catch (e) {
-            console.error("Error deleting student: ", e);
-            alert("An error occurred while deleting.");
-        }
+            for (const record of recordsToDelete) await deleteDoc(doc(db, "MasteryRecords", record.id));
+            dropdown.value = "";
+            await loadStudents();
+            await loadBaseData();
+            renderLibrary();
+        } catch (e) { console.error(e); }
     }
 };
 
-window.toggleMastery = async (kId) => {
+window.toggleMastery = async (kId, element) => {
     const sId = document.getElementById('studentDropdown').value;
     if (!sId) return alert("Please select a student first!");
 
-    const record = masteryRecords.find(r => r.studentId === sId && r.knowledgeId === kId);
+    // Immediate Visual Feedback
+    element.classList.add('is-loading');
+    const statusText = element.querySelector('.status-indicator');
+    const originalText = statusText.textContent;
+    statusText.textContent = "Updating...";
 
-    if (record) {
-        await deleteDoc(doc(db, "MasteryRecords", record.id));
-    } else {
-        await addDoc(collection(db, "MasteryRecords"), { studentId: sId, knowledgeId: kId });
+    try {
+        const record = masteryRecords.find(r => r.studentId === sId && r.knowledgeId === kId);
+        if (record) {
+            await deleteDoc(doc(db, "MasteryRecords", record.id));
+        } else {
+            await addDoc(collection(db, "MasteryRecords"), { studentId: sId, knowledgeId: kId });
+        }
+
+        // Refresh only Mastery local data
+        const mastSnap = await getDocs(collection(db, "MasteryRecords"));
+        masteryRecords = mastSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderLibrary();
+    } catch (e) {
+        console.error(e);
+        statusText.textContent = originalText;
+        element.classList.remove('is-loading');
+        alert("Sync error. Try again.");
     }
-
-    // Update local state and UI
-    const mastSnap = await getDocs(collection(db, "MasteryRecords"));
-    masteryRecords = mastSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderLibrary();
 };
 
 function renderLibrary() {
@@ -328,34 +325,24 @@ function renderLibrary() {
     container.innerHTML = "";
 
     if (!selectedStudent) {
-        container.innerHTML = "<div style='text-align:center; padding:50px; color:#888;'>Select a student to view the knowledge bank and track progress.</div>";
+        container.innerHTML = "<div style='text-align:center; padding:50px; color:#888;'>Select a student to track progress.</div>";
         return;
     }
 
-    if (knowledgeItems.length === 0) {
-        container.innerHTML = `
-            <div class='debug-msg'>
-                <strong>No knowledge items found in the database.</strong><br>
-                Ensure your 'Knowledge' collection in Firebase has documents.
-            </div>`;
-        return;
-    }
-
-    // Loop through chapters (already sorted via Webpage 2 logic)
     chapters.forEach(chap => {
-        // Find items for this specific chapter
         const items = knowledgeItems.filter(k => k.categoryIdStr === chap.id);
         if (items.length === 0) return;
 
         const section = document.createElement('div');
         section.className = "chapter-section";
         
-        // Render items using Webpage 2 layout
         const itemsHtml = items.map(item => {
             const isMastered = masteryRecords.some(r => r.studentId === selectedStudent && r.knowledgeId === item.id);
+            // We pass 'this' to toggleMastery to identify the clicked element
             return `
-                <div class="knowledge-item ${isMastered ? 'mastered' : ''}" onclick="toggleMastery('${item.id}')">
-                    <div class="content-display">${item.latex || '<em>Empty Knowledge Data</em>'}</div>
+                <div class="knowledge-item ${isMastered ? 'mastered' : ''}" 
+                     onclick="toggleMastery('${item.id}', this)">
+                    <div class="content-display">${item.latex || '<em>Empty</em>'}</div>
                     <div class="status-indicator">${isMastered ? '✓ Mastered' : '○ Unmastered'}</div>
                 </div>
             `;
@@ -371,9 +358,7 @@ function renderLibrary() {
     if (window.MathJax) MathJax.typesetPromise();
 }
 
-// Global scope assignments for button clicks
 window.renderLibrary = renderLibrary;
-
 startApp();
 </script>
 </body>
