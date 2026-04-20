@@ -116,8 +116,8 @@
                 const qKnowIds = qData.knowledgeIds || [];
                 const card = document.createElement('div');
                 card.className = "q-card";
+                card.id = `card-${qData.id}`;
                 
-                // FIXED: Knowledge tags now use 'content-display' and do not wrap in extra $$
                 let knowHtml = qKnowIds.map(kid => {
                     const k = allKnowledge.find(kn => kn.id === kid);
                     return k ? `<div class="know-tag content-display" onclick="enterFocusMode('${k.id}')" style="cursor:pointer; display:block; margin-bottom:5px;">${k.latex}</div>` : "";
@@ -127,7 +127,8 @@
                     <div class="q-card-header">
                         <span><input type="checkbox" class="print-selector" data-id="${qData.id}"> <strong>Question ${++i}</strong></span>
                         <div style="display:flex; gap:8px;">
-                            <button onclick="copyQuestionCode(this)" data-code="${encodeURIComponent(qData.latexQuestion)}" class="small-btn" style="color:var(--primary)">Copy Code</button>
+                            <button onclick="toggleSingleSolution('${qData.id}')" class="small-btn" style="color:var(--success)">Solution</button>
+                            <button onclick="copyQuestionCode(this, '${qData.id}')" class="small-btn" style="color:var(--primary)">Copy Code</button>
                             <button onclick="openAttachModal('${qData.id}')" class="small-btn">🔗 Link Knowledge (${qKnowIds.length})</button>
                         </div>
                     </div>
@@ -145,6 +146,27 @@
             if (window.MathJax) MathJax.typesetPromise([container]);
         };
 
+        window.toggleSingleSolution = (qId) => {
+            const card = document.getElementById(`card-${qId}`);
+            card.classList.toggle('force-show-sol');
+        };
+
+        window.copyQuestionCode = async (btn, qId) => {
+            const qData = allFetchedQuestions.find(q => q.id === qId);
+            if (!qData) return;
+            
+            try {
+                await navigator.clipboard.writeText(qData.latexQuestion);
+                const originalText = btn.innerText;
+                btn.innerText = "Copied!";
+                btn.classList.add('copy-success');
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.classList.remove('copy-success');
+                }, 1500);
+            } catch (err) { alert("Failed to copy code."); }
+        };
+
         window.renderViewLibrary = () => {
             const search = document.getElementById('viewKnowSearch').value.toLowerCase();
             const catFilter = document.getElementById('viewKnowCatFilter').value;
@@ -159,15 +181,14 @@
                 const item = document.createElement('div');
                 item.className = "search-item";
                 const encodedLatex = encodeURIComponent(k.latex);
-                // FIXED: Pop-up list uses content-display and raw k.latex
                 item.innerHTML = `
                     <div class="search-item-text" style="cursor:pointer" onclick="document.getElementById('viewLibraryModal').style.display='none'; enterFocusMode('${k.id}')">
                         <div class="latex-content-container content-display">${k.latex}</div>
                         <small style="color:var(--primary); font-weight:bold;">${categoryLookup[k.categoryId] || ''}</small>
                     </div>
                     <div class="search-item-actions">
-                        <button class="small-btn" onclick="editKnowledge('${k.id}', '${encodedLatex}')" style="color:var(--primary); margin-bottom:2px;">Edit</button>
-                        <button class="small-btn" onclick="deleteKnowledge('${k.id}')" style="color:var(--danger)">Del</button>
+                        <button class="small-btn" onclick="editKnowledge('${k.id}', '${encodedLatex}', this)" style="color:var(--primary); margin-bottom:2px;">Edit</button>
+                        <button class="small-btn" onclick="deleteKnowledge('${k.id}', this)" style="color:var(--danger)">Del</button>
                     </div>`;
                 list.appendChild(item);
             });
@@ -187,7 +208,6 @@
                 const isLinked = linkedIds.includes(k.id);
                 const item = document.createElement('div');
                 item.className = "search-item" + (isLinked ? " linked-item" : "");
-                // FIXED: Pop-up search list uses content-display and raw k.latex
                 item.innerHTML = `
                     <div class="search-item-text">
                         <div class="latex-content-container content-display">${k.latex}</div>
@@ -195,7 +215,7 @@
                     </div>
                     <div class="search-item-actions">
                         <button class="small-btn ${isLinked ? 'remove-btn' : 'add-btn'}" 
-                                onclick="${isLinked ? 'removeKnowledgeFromQuestion' : 'attachKnowledgeToQuestion'}('${targetQId}', '${k.id}')">
+                                onclick="${isLinked ? 'removeKnowledgeFromQuestion' : 'attachKnowledgeToQuestion'}('${targetQId}', '${k.id}', this)">
                             ${isLinked ? 'Remove' : 'Add'}
                         </button>
                     </div>`;
@@ -204,18 +224,13 @@
             if (window.MathJax) MathJax.typesetPromise([list]);
         };
 
-        // Standard Utility Functions
-        window.updateKnowPreview = () => {
-            const input = document.getElementById('knowLatex').value;
-            const preview = document.getElementById('knowPreview');
-            preview.innerHTML = input; // Raw string allows MathJax to find $
-            if (window.MathJax) MathJax.typesetPromise([preview]);
-        };
-
         window.saveKnowledge = async () => {
+            const btn = event.target;
             const content = document.getElementById('knowLatex').value;
             const catId = document.getElementById('knowCategory').value;
             if(!content || !catId) return alert("Please provide both LaTeX and a Chapter.");
+            
+            btn.classList.add('btn-loading');
             try {
                 await addDoc(collection(db, "Knowledge"), { 
                     latex: content, 
@@ -223,24 +238,32 @@
                     createdAt: new Date(),
                     order: Date.now() 
                 });
-                alert("Knowledge Saved!");
                 document.getElementById('knowModal').style.display = 'none';
                 document.getElementById('knowLatex').value = "";
                 document.getElementById('knowPreview').innerHTML = "";
                 await loadKnowledge();
             } catch (e) { alert(e.message); }
+            finally { btn.classList.remove('btn-loading'); }
         };
 
-        window.attachKnowledgeToQuestion = async (qId, kId) => {
-            await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayUnion(kId) });
-            await refreshQuestionsWithScroll();
-            renderKnowledgeSearch();
+        window.attachKnowledgeToQuestion = async (qId, kId, btn) => {
+            if(btn) btn.classList.add('btn-loading');
+            try {
+                await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayUnion(kId) });
+                await refreshQuestionsWithScroll();
+                renderKnowledgeSearch();
+            } catch (e) { alert(e.message); }
+            finally { if(btn) btn.classList.remove('btn-loading'); }
         };
 
-        window.removeKnowledgeFromQuestion = async (qId, kId) => {
-            await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayRemove(kId) });
-            await refreshQuestionsWithScroll();
-            renderKnowledgeSearch();
+        window.removeKnowledgeFromQuestion = async (qId, kId, btn) => {
+            if(btn) btn.classList.add('btn-loading');
+            try {
+                await updateDoc(doc(db, "MathQuestion", qId), { knowledgeIds: arrayRemove(kId) });
+                await refreshQuestionsWithScroll();
+                renderKnowledgeSearch();
+            } catch (e) { alert(e.message); }
+            finally { if(btn) btn.classList.remove('btn-loading'); }
         };
 
         async function refreshQuestionsWithScroll() {
@@ -285,40 +308,39 @@
             document.getElementById('main-content-view').style.display = 'block';
         };
 
-        window.copyQuestionCode = async (btn) => {
-            const rawCode = decodeURIComponent(btn.getAttribute('data-code'));
-            try {
-                await navigator.clipboard.writeText(rawCode);
-                const originalText = btn.innerText;
-                btn.innerText = "Copied!";
-                btn.style.borderColor = "var(--success)";
-                btn.style.color = "var(--success)";
-                setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.style.borderColor = "";
-                    btn.style.color = "var(--primary)";
-                }, 1500);
-            } catch (err) { alert("Failed to copy code."); }
-        };
-
-        window.editKnowledge = async (id, encodedLatex) => {
+        window.editKnowledge = async (id, encodedLatex, btn) => {
             const currentLatex = decodeURIComponent(encodedLatex);
             const newLatex = prompt("Edit Knowledge LaTeX:", currentLatex);
             if (newLatex !== null && newLatex !== currentLatex) {
-                await updateDoc(doc(db, "Knowledge", id), { latex: newLatex });
-                await loadKnowledge();
-                renderViewLibrary();
-                await loadQuestions(); 
+                if(btn) btn.classList.add('btn-loading');
+                try {
+                    await updateDoc(doc(db, "Knowledge", id), { latex: newLatex });
+                    await loadKnowledge();
+                    renderViewLibrary();
+                    await loadQuestions(); 
+                } catch(e) { alert(e.message); }
+                finally { if(btn) btn.classList.remove('btn-loading'); }
             }
         };
 
-        window.deleteKnowledge = async (id) => {
+        window.deleteKnowledge = async (id, btn) => {
             if (confirm("Are you sure? It will be removed from all linked questions.")) {
-                await deleteDoc(doc(db, "Knowledge", id));
-                await loadKnowledge();
-                renderViewLibrary();
-                await loadQuestions();
+                if(btn) btn.classList.add('btn-loading');
+                try {
+                    await deleteDoc(doc(db, "Knowledge", id));
+                    await loadKnowledge();
+                    renderViewLibrary();
+                    await loadQuestions();
+                } catch(e) { alert(e.message); }
+                finally { if(btn) btn.classList.remove('btn-loading'); }
             }
+        };
+
+        window.updateKnowPreview = () => {
+            const input = document.getElementById('knowLatex').value;
+            const preview = document.getElementById('knowPreview');
+            preview.innerHTML = input;
+            if (window.MathJax) MathJax.typesetPromise([preview]);
         };
 
         init();
@@ -341,12 +363,20 @@
         :root { --primary: #1890ff; --success: #52c41a; --danger: #ff4d4f; }
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background-color: #f4f7f9; }
         
-        /* FIXED: Added content-display to handle white-space and formatting */
-        .content-display { 
-            white-space: pre-wrap; 
-            line-height: 1.6; 
-            word-break: break-word; 
+        .content-display { white-space: pre-wrap; line-height: 1.6; word-break: break-word; }
+
+        button:active { transform: translateY(1.5px); filter: brightness(0.9); }
+        .primary-btn, .small-btn { transition: transform 0.1s, filter 0.1s; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .btn-loading { color: transparent !important; position: relative; pointer-events: none; }
+        .btn-loading::after {
+            content: ''; position: absolute; width: 14px; height: 14px; top: 50%; left: 50%;
+            margin-top: -7px; margin-left: -7px; border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: #fff; animation: spin 0.6s linear infinite;
         }
+        .small-btn.btn-loading::after { border-color: rgba(24, 144, 255, 0.2); border-top-color: var(--primary); }
+        .copy-success { color: var(--success) !important; border-color: var(--success) !important; }
 
         #loading-state { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #888; }
         #app-wrapper { display: none; max-width: 1000px; margin: auto; padding: 20px; flex-direction: column; }
@@ -368,7 +398,11 @@
         .sol-box { margin-top: 20px; background: #fffdf6; border: 1px solid #ffe58f; border-radius: 8px; display: none; overflow: hidden; }
         .sol-title { background: #fff1b8; padding: 5px 15px; font-size: 12px; font-weight: bold; color: #874d00; text-transform: uppercase; border-bottom: 1px solid #ffe58f; }
         .s-content { padding: 15px; white-space: pre-wrap; line-height: 1.6; color: #333; }
+        
+        /* Global toggle */
         .show-sol .sol-box { display: block !important; }
+        /* Individual toggle */
+        .force-show-sol .sol-box { display: block !important; }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:6000; }
         .modal-content { background: white; padding: 25px; border-radius: 12px; width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; }
@@ -396,7 +430,7 @@
             <div style="display:flex; gap:12px; margin-bottom:20px; align-items: center; flex-wrap: wrap;">
                 <button onclick="renderCurrentQuestions()" class="primary-btn">Apply Filters</button>
                 <label style="background:#fff; padding:9px 15px; border:1px solid #ddd; border-radius:6px; cursor:pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" onchange="document.body.classList.toggle('show-sol')"> Show Solutions
+                    <input type="checkbox" onchange="document.body.classList.toggle('show-sol')"> Show All Solutions
                 </label>
             </div>
             <div id="questionList"></div>
