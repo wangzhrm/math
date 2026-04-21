@@ -35,8 +35,27 @@
         
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; gap: 10px; flex-wrap: wrap; }
         .btn-group { display: flex; gap: 10px; }
-        button { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
+        
+        /* Tactile Button Styling */
+        button { 
+            padding: 10px 20px; 
+            border-radius: 8px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            border: none; 
+            transition: all 0.1s ease;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
         button:hover { opacity: 0.9; }
+        button:active { 
+            transform: translateY(2px) scale(0.95); 
+            filter: brightness(0.8); 
+            box-shadow: inset 0 3px 5px rgba(0,0,0,0.1);
+        }
+
         .add-btn { background: var(--accent); color: white; }
         .print-mode-btn { background: #fa8c16; color: white; }
         .do-print-btn { background: #52c41a; color: white; display: none; }
@@ -64,8 +83,8 @@
         .content-display { font-size: 1.1rem; flex: 1; min-width: 0; line-height: 1.6; white-space: pre-wrap; }
 
         .item-actions { display: flex; gap: 5px; flex-shrink: 0; align-self: flex-start; padding-top: 5px; position: relative; z-index: 10; } 
-        .action-btn { background: #fff; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
-
+        .action-btn { background: #fff; border: 1px solid #d1d5db; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; height: 32px; }
+        
         .print-checkbox { display: none; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
         body.selection-mode .print-checkbox { display: inline-block; }
         body.selection-mode .item-actions, body.selection-mode .add-btn { display: none; }
@@ -150,17 +169,17 @@
 
     async function init() {
         await fetchData();
+        await repairOrders(); // Clean up duplicate/missing orders
         renderUI();
     }
 
     async function fetchData() {
         const catSnap = await getDocs(collection(db, "Category"));
         chapters = catSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-                             .filter(c => c.parent).sort((a, b) => (a.order || 0) - (b.order || 0));
+                               .filter(c => c.parent).sort((a, b) => (a.order || 0) - (b.order || 0));
 
         const knSnap = await getDocs(collection(db, "Knowledge"));
-        knowledgeBase = knSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-                                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+        knowledgeBase = knSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const qSnap = await getDocs(collection(db, "MathQuestion"));
         qCounts = {};
@@ -172,13 +191,38 @@
         document.getElementById('chapSelect').innerHTML = chapters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     }
 
+    // New: Fixes the database entries that have no order or duplicate order
+    async function repairOrders() {
+        let hasChanges = false;
+        for (const chap of chapters) {
+            const items = knowledgeBase
+                .filter(k => k.categoryId === chap.id)
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].order !== i) {
+                    await updateDoc(doc(db, "Knowledge", items[i].id), { order: i });
+                    items[i].order = i; 
+                    hasChanges = true;
+                }
+            }
+        }
+        if (hasChanges) {
+            // Re-sort local knowledgeBase after repairs
+            knowledgeBase.sort((a, b) => (a.order || 0) - (b.order || 0));
+        }
+    }
+
     function renderUI() {
         const lib = document.getElementById('knowledgeLibrary');
         lib.innerHTML = "";
         const maxQ = Math.max(...Object.values(qCounts), 1);
 
         chapters.forEach(chap => {
-            const items = knowledgeBase.filter(k => k.categoryId === chap.id);
+            const items = knowledgeBase
+                .filter(k => k.categoryId === chap.id)
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+
             if (items.length === 0) return;
 
             const section = document.createElement('div');
@@ -223,18 +267,21 @@
     
     window.toggleSelectionMode = () => {
         document.body.classList.toggle('selection-mode');
-        document.getElementById('toggleSelectBtn').innerText = document.body.classList.contains('selection-mode') ? "Cancel" : "Select to Print";
+        const btn = document.getElementById('toggleSelectBtn');
+        btn.innerText = document.body.classList.contains('selection-mode') ? "Cancel" : "Select to Print";
     };
 
     window.syncPrintClass = (itemId) => {
-        document.getElementById(`item-${itemId}`).classList.toggle('selected-for-print');
+        const el = document.getElementById(`item-${itemId}`);
+        if(el) el.classList.toggle('selected-for-print');
     };
 
     window.toggleChapterItems = (chapId, isChecked) => {
         const checkboxes = document.querySelectorAll(`.item-check[data-chap="${chapId}"]`);
         checkboxes.forEach(cb => { 
             cb.checked = isChecked; 
-            cb.closest('.knowledge-item').classList.toggle('selected-for-print', isChecked);
+            const item = cb.closest('.knowledge-item');
+            if(item) item.classList.toggle('selected-for-print', isChecked);
         });
     };
 
@@ -267,22 +314,49 @@
         const id = document.getElementById('editTargetId').value;
         const latex = document.getElementById('latexInput').value;
         const catId = document.getElementById('chapSelect').value;
-        if (id) await updateDoc(doc(db, "Knowledge", id), { latex, categoryId: catId });
-        else await addDoc(collection(db, "Knowledge"), { latex, categoryId: catId, order: Date.now() });
+        if (id) {
+            await updateDoc(doc(db, "Knowledge", id), { latex, categoryId: catId });
+        } else {
+            // New items are added to the end of their chapter
+            const chapterItems = knowledgeBase.filter(k => k.categoryId === catId);
+            const newOrder = chapterItems.length;
+            await addDoc(collection(db, "Knowledge"), { latex, categoryId: catId, order: newOrder });
+        }
         closeModal(); await init();
     };
 
     window.closeModal = () => document.getElementById('editModal').style.display = 'none';
     window.deleteItem = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "Knowledge", id)); await init(); } };
 
+    // Move Logic: Swaps indices within the lecture list
     window.moveItem = async (id, direction) => {
-        const idx = knowledgeBase.findIndex(k => k.id === id);
-        const targetIdx = idx + direction;
-        if (targetIdx < 0 || targetIdx >= knowledgeBase.length) return;
-        const current = knowledgeBase[idx], swap = knowledgeBase[targetIdx];
-        await updateDoc(doc(db, "Knowledge", current.id), { order: swap.order || 0 });
-        await updateDoc(doc(db, "Knowledge", swap.id), { order: current.order || 0 });
-        await init();
+        const item = knowledgeBase.find(k => k.id === id);
+        if (!item) return;
+
+        const chapterItems = knowledgeBase
+            .filter(k => k.categoryId === item.categoryId)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        const idxInChapter = chapterItems.findIndex(k => k.id === id);
+        const targetIdx = idxInChapter + direction;
+
+        if (targetIdx < 0 || targetIdx >= chapterItems.length) return;
+
+        const swapTarget = chapterItems[targetIdx];
+        
+        // Swap Firestore orders
+        const currentOrderValue = item.order;
+        const targetOrderValue = swapTarget.order;
+
+        try {
+            await updateDoc(doc(db, "Knowledge", item.id), { order: targetOrderValue });
+            await updateDoc(doc(db, "Knowledge", swapTarget.id), { order: currentOrderValue });
+            
+            // Re-init to update local state and re-render
+            await init();
+        } catch (e) {
+            console.error("Move failed", e);
+        }
     };
 
     window.viewLinkedQuestions = async (kId) => {
