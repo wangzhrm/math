@@ -163,10 +163,16 @@ button:hover { opacity: 0.9; }
   margin-bottom: 20px;
   background: #fafafa;
 }
+
+/* FIXED: Preserve newlines and spacing in questions */
 .q-text {
   font-size: 1.1rem;
   line-height: 1.7;
+  white-space: pre-wrap;
+  margin-bottom: 12px;
 }
+
+/* FIXED: Preserve newlines and spacing in solutions */
 .sol-container {
   margin-top: 15px;
   display: none;
@@ -175,7 +181,9 @@ button:hover { opacity: 0.9; }
   border: 1px solid #b7eb8f;
   border-radius: 6px;
   line-height: 1.6;
+  white-space: pre-wrap;
 }
+
 .sol-btn {
   margin-top: 10px;
   background: #8c8c8c;
@@ -417,7 +425,6 @@ window.openQuestionFocus = (kId) => {
     
     document.getElementById('questionModal').style.display = 'flex';
     
-    // CRITICAL: Force MathJax to scan the new modal content
     if (window.MathJax) {
         MathJax.typesetPromise([listContainer, document.getElementById('modalKnowledgeContext')]);
     }
@@ -428,7 +435,6 @@ window.toggleSolution = (btn) => {
     const isHidden = sol.style.display === 'none' || sol.style.display === '';
     sol.style.display = isHidden ? 'block' : 'none';
     btn.innerText = isHidden ? 'Hide Solution' : 'View Solution';
-    // Re-typeset solution when revealed in case it was missed
     if (isHidden && window.MathJax) MathJax.typesetPromise([sol]);
 };
 
@@ -498,7 +504,7 @@ window.exportCurrentView = () => {
     
     const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
-    <style>body { font-family: sans-serif; padding: 40px; } .knowledge-header-tip { background: #f9f0ff; border: 1px solid #d3adf7; padding: 15px; border-radius: 8px; margin-bottom: 20px; } .q-focus-card { border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 10px; }</style></head><body>${knowledgeElem.innerHTML}${clone.innerHTML}</body></html>`;
+    <style>body { font-family: sans-serif; padding: 40px; } .knowledge-header-tip { background: #f9f0ff; border: 1px solid #d3adf7; padding: 15px; border-radius: 8px; margin-bottom: 20px; } .q-focus-card { border: 1px solid #eee; padding: 20px; margin-bottom: 20px; border-radius: 10px; white-space: pre-wrap; }</style></head><body>${knowledgeElem.innerHTML}${clone.innerHTML}</body></html>`;
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
