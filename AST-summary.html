@@ -36,7 +36,6 @@
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; gap: 10px; flex-wrap: wrap; }
         .btn-group { display: flex; gap: 10px; }
         
-        /* Tactile Button Styling */
         button { 
             padding: 10px 20px; 
             border-radius: 8px; 
@@ -118,20 +117,28 @@
     <div id="knowledgeLibrary"></div>
 </div>
 
-<div id="editModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000;">
-    <div style="background: white; width: 600px; max-width: 95%; border-radius: 16px; padding: 30px; box-sizing: border-box;">
+<div id="editModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 20px;">
+    <div style="background: white; width: 950px; max-width: 95%; max-height: 90vh; border-radius: 16px; padding: 30px; box-sizing: border-box; overflow-y: auto; pointer-events: auto;">
         <h3 id="modalTitle">Knowledge Editor</h3>
         <input type="hidden" id="editTargetId">
-        <div style="margin-bottom:15px;">
-            <label>Chapter</label>
-            <select id="chapSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;"></select>
+        
+        <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+            <div style="flex: 1;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Chapter</label>
+                <select id="chapSelect" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ddd;"></select>
+            </div>
         </div>
+
         <div style="margin-bottom:15px;">
-            <label>LaTeX Content</label>
-            <textarea id="latexInput" oninput="updatePreview()" style="width: 100%; height: 120px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace;"></textarea>
+            <label style="font-weight: bold; display: block; margin-bottom: 5px;">LaTeX Content</label>
+            <textarea id="latexInput" oninput="updatePreview()" style="width: 100%; height: 200px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace; font-size: 14px;"></textarea>
         </div>
-        <label>Preview:</label>
-        <div id="latexPreview" style="margin-top: 10px; padding: 15px; background: #f9f9f9; border: 1px dashed var(--accent); min-height: 60px;"></div>
+
+        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Preview:</label>
+        <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 25px;">
+             <div id="latexPreview" style="padding: 20px 0; white-space: pre-wrap; font-size: 1.1rem; line-height: 1.6; min-height: 60px;"></div>
+        </div>
+
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button onclick="closeModal()" style="flex:1; background:#eee;">Cancel</button>
             <button onclick="saveData()" style="flex:2; background:var(--primary); color:white;">Save</button>
@@ -169,7 +176,7 @@
 
     async function init() {
         await fetchData();
-        await repairOrders(); // Clean up duplicate/missing orders
+        await repairOrders(); 
         renderUI();
     }
 
@@ -191,7 +198,6 @@
         document.getElementById('chapSelect').innerHTML = chapters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     }
 
-    // New: Fixes the database entries that have no order or duplicate order
     async function repairOrders() {
         let hasChanges = false;
         for (const chap of chapters) {
@@ -208,7 +214,6 @@
             }
         }
         if (hasChanges) {
-            // Re-sort local knowledgeBase after repairs
             knowledgeBase.sort((a, b) => (a.order || 0) - (b.order || 0));
         }
     }
@@ -262,7 +267,6 @@
         if (window.MathJax) MathJax.typesetPromise();
     }
 
-    /* Logic Handlers */
     window.toggleFold = (id) => document.getElementById(`sec-${id}`).classList.toggle('folded');
     
     window.toggleSelectionMode = () => {
@@ -317,7 +321,6 @@
         if (id) {
             await updateDoc(doc(db, "Knowledge", id), { latex, categoryId: catId });
         } else {
-            // New items are added to the end of their chapter
             const chapterItems = knowledgeBase.filter(k => k.categoryId === catId);
             const newOrder = chapterItems.length;
             await addDoc(collection(db, "Knowledge"), { latex, categoryId: catId, order: newOrder });
@@ -328,7 +331,6 @@
     window.closeModal = () => document.getElementById('editModal').style.display = 'none';
     window.deleteItem = async (id) => { if (confirm("Delete?")) { await deleteDoc(doc(db, "Knowledge", id)); await init(); } };
 
-    // Move Logic: Swaps indices within the lecture list
     window.moveItem = async (id, direction) => {
         const item = knowledgeBase.find(k => k.id === id);
         if (!item) return;
@@ -343,16 +345,12 @@
         if (targetIdx < 0 || targetIdx >= chapterItems.length) return;
 
         const swapTarget = chapterItems[targetIdx];
-        
-        // Swap Firestore orders
         const currentOrderValue = item.order;
         const targetOrderValue = swapTarget.order;
 
         try {
             await updateDoc(doc(db, "Knowledge", item.id), { order: targetOrderValue });
             await updateDoc(doc(db, "Knowledge", swapTarget.id), { order: currentOrderValue });
-            
-            // Re-init to update local state and re-render
             await init();
         } catch (e) {
             console.error("Move failed", e);
