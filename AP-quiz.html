@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AP Math | Quiz Architect Ultra</title>
+    <script>
+        window.MathJax = { 
+            tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+            chtml: { displayAlign: 'left' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root { 
+            --primary: #722ed1; --bg: #f0f2f5; --sidebar-bg: #ffffff;
+            --border: #d9d9d9; --text-main: #1f2937; --text-muted: #6b7280; 
+            --success: #52c41a; --warning: #fa8c16; --danger: #ff4d4f; --accent: #1890ff;
+        }
+
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--text-main); font-size: 13px; }
+        .layout { display: grid; grid-template-columns: 280px 1fr; gap: 15px; height: calc(100vh - 30px); }
+
+        /* Sidebar UI */
+        .sidebar { background: var(--sidebar-bg); padding: 15px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow-y: auto; display: flex; flex-direction: column; }
+        h3 { font-size: 0.8rem; margin: 0 0 8px 0; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        input[type="text"], select { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; }
+
+        /* Filter Panel */
+        .filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .filter-links { display: flex; gap: 8px; }
+        .filter-links a { font-size: 10px; text-decoration: none; font-weight: bold; cursor: pointer; }
+        
+        .filter-list { flex-grow: 1; overflow-y: auto; margin-bottom: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+        .filter-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.8rem; cursor: pointer; }
+
+        /* Main Table UI */
+        .main-content { background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: auto; position: relative; }
+        table { border-collapse: collapse; min-width: 100%; table-layout: fixed; }
+        
+        .col-q { width: 450px; position: sticky; left: 0; z-index: 10; background: white; border-right: 2px solid #eee !important; }
+        .col-select { width: 45px; text-align: center; }
+        .col-quiz { width: 55px; text-align: center; border-right: 1px solid #f1f5f9; vertical-align: top; }
+
+        thead th { position: sticky; top: 0; z-index: 20; background: #f8fafc; padding: 10px 5px; border-bottom: 2px solid var(--border); font-size: 11px; }
+        thead th.col-q { z-index: 30; }
+
+        td { padding: 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        .row-chapter { background: #f8fafc; font-weight: 800; color: var(--primary); }
+        .row-knowledge { background: #fafafa; font-weight: 600; color: var(--accent); font-size: 0.85rem; }
+
+        .quiz-actions { display: flex; flex-direction: column; gap: 2px; margin-top: 5px; align-items: center; }
+        .btn-mini { width: 22px; height: 22px; line-height: 20px; font-size: 10px; font-weight: 900; border-radius: 4px; border: none; cursor: pointer; color: white; }
+        .b-p { background: var(--primary); } 
+        .b-s { background: var(--success); }
+        .b-e { background: var(--warning); }
+        .b-x { background: var(--danger); }
+
+        .q-text { font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; }
+        .sol-box { display: none; margin-top: 10px; padding: 10px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 6px; font-size: 0.85rem; white-space: pre-wrap; }
+
+        .btn-main { width: 100%; padding: 10px; border-radius: 6px; border: none; font-weight: 700; cursor: pointer; background: var(--primary); color: white; }
+        .counter { background: #001529; color: white; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; margin-bottom: 10px; }
+        
+        #editBanner { padding: 8px; background: #fff7e6; border: 1px solid #fa8c16; border-radius: 6px; margin-bottom: 10px; font-size: 0.8rem; text-align: center; }
+
+        @media print {
+            .no-print, .sidebar, .quiz-actions, th:not(.col-q), td:not(.col-q) { display: none !important; }
+            body { background: white !important; padding: 0 !important; }
+            .layout { display: block !important; }
+            .main-content { overflow: visible !important; box-shadow: none; border: none; }
+            .col-q { width: 100% !important; position: static !important; border: none !important; }
+            .row-question { border-bottom: 1px solid #eee !important; display: none !important; }
+            body.print-active .selected-for-quiz { display: table-row !important; page-break-inside: avoid; }
+            body.show-sols .sol-box { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <div class="sidebar no-print">
+        <h3>Profiles</h3>
+        <input type="text" id="newStudentName" placeholder="Student Name...">
+        <button class="btn-main" onclick="addStudent()" style="background:var(--accent); margin-bottom: 15px;">+ Create Student</button>
+        
+        <h3>Architect</h3>
+        <select id="studentSelect" onchange="exitEditMode(); refreshView()">
+            <option value="">-- Select Student --</option>
+        </select>
+
+        <div id="uiControls" style="display:none;">
+            <div id="editBanner" style="display:none;">
+                <strong>EDITING MODE</strong><br>
+                <a href="#" onclick="exitEditMode()" style="color:var(--danger); font-size:10px;">Cancel / Exit</a>
+            </div>
+            
+            <div class="counter">Selected: <span id="selCount">0</span></div>
+            
+            <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 5px; margin-bottom: 15px;">
+                <input type="checkbox" id="includeSols"> Include Solutions
+            </label>
+
+            <div class="filter-header">
+                <h3>Chapters</h3>
+                <div class="filter-links">
+                    <a onclick="toggleAllFilters(true)" style="color:var(--accent)">All</a>
+                    <a onclick="toggleAllFilters(false)" style="color:var(--danger)">Clear</a>
+                </div>
+            </div>
+            <div class="filter-list" id="filterList"></div>
+            
+            <button id="mainBtn" class="btn-main" onclick="handleSyncExport()">Sync & Export</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <table id="masterTable">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody">
+                <tr><td colspan="100" style="text-align:center; padding-top:100px; color:#999;">Select a profile to load the question bank.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyA9ku4gWV0D08ugIETMevoLBNeft4hNWUk",
+        authDomain: "ap-math-8783b.firebaseapp.com",
+        projectId: "ap-math-8783b",
+        storageBucket: "ap-math-8783b.firebasestorage.app",
+        messagingSenderId: "357604958030",
+        appId: "1:357604958030:web:b4bcd12bc9cccfefd6081f"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let data = { cats: [], kno: [], qs: [], students: [], quizzes: [], chapters: [] };
+    let selectedQs = new Set();
+    let visibleChapterIds = new Set();
+    let currentEditQuizId = null;
+
+    async function loadData() {
+        const [cSnap, kSnap, qSnap, sSnap, zSnap] = await Promise.all([
+            getDocs(collection(db, "Category")), getDocs(collection(db, "Knowledge")),
+            getDocs(collection(db, "MathQuestion")), getDocs(collection(db, "Students")),
+            getDocs(collection(db, "Quizzes"))
+        ]);
+        data.cats = cSnap.docs.map(d => ({id: d.id, ...d.data()}));
+        data.kno = kSnap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => (a.order||0) - (b.order||0));
+        data.qs = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
+        data.students = sSnap.docs.map(d => ({id: d.id, ...d.data()}));
+        data.quizzes = zSnap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.timestamp - a.timestamp);
+
+        const root = data.cats.find(c => c.name?.toLowerCase().includes("chapter"));
+        data.chapters = data.cats.filter(c => (c.parent?.id || c.parent) === root?.id).sort((a,b) => (a.order||0) - (b.order||0));
+
+        if(visibleChapterIds.size === 0) data.chapters.forEach(c => visibleChapterIds.add(c.id));
+        
+        populateStudents();
+    }
+
+    function populateStudents() {
+        const sel = document.getElementById('studentSelect');
+        sel.innerHTML = '<option value="">-- Select Student --</option>' + 
+            data.students.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    }
+
+    window.refreshView = () => {
+        document.getElementById('uiControls').style.display = 'block';
+        renderFilters();
+        renderTable();
+    };
+
+    function renderFilters() {
+        const list = document.getElementById('filterList');
+        list.innerHTML = data.chapters.map(c => `
+            <label class="filter-item">
+                <input type="checkbox" class="chap-cb" value="${c.id}" ${visibleChapterIds.has(c.id)?'checked':''} onchange="updateFilter(this)">
+                <span>${c.name}</span>
+            </label>
+        `).join('');
+    }
+
+    window.updateFilter = (cb) => {
+        cb.checked ? visibleChapterIds.add(cb.value) : visibleChapterIds.delete(cb.value);
+        renderTable();
+    };
+
+    window.toggleAllFilters = (show) => {
+        visibleChapterIds.clear();
+        if(show) data.chapters.forEach(c => visibleChapterIds.add(c.id));
+        document.querySelectorAll('.chap-cb').forEach(cb => cb.checked = show);
+        renderTable();
+    };
+
+    function renderTable() {
+        const sId = document.getElementById('studentSelect').value;
+        if(!sId) return;
+        const studentQuizzes = data.quizzes.filter(z => z.studentId === sId);
+
+        const head = document.getElementById('tableHead');
+        let hHtml = `<tr><th class="col-q">AP Math Concept & Questions</th><th class="col-select no-print">+</th>`;
+        studentQuizzes.forEach(z => {
+            hHtml += `<th class="col-quiz no-print">
+                <div style="font-size:9px;">${z.quizName}</div>
+                <div class="quiz-actions">
+                    <button class="btn-mini b-p" onclick="reprintQuiz('${z.id}', false)">P</button>
+                    <button class="btn-mini b-s" onclick="reprintQuiz('${z.id}', true)">S</button>
+                    <button class="btn-mini b-e" onclick="enterEditMode('${z.id}')">E</button>
+                    <button class="btn-mini b-x" onclick="deleteQuiz('${z.id}')">X</button>
+                </div>
+            </th>`;
+        });
+        head.innerHTML = hHtml + `</tr>`;
+
+        const body = document.getElementById('tableBody');
+        body.innerHTML = "";
+        let qIndex = 1;
+
+        data.chapters.forEach(chap => {
+            if(!visibleChapterIds.has(chap.id)) return;
+            body.innerHTML += `<tr class="row-chapter no-print"><td colspan="100">${chap.name}</td></tr>`;
+
+            data.kno.filter(k => k.categoryId === chap.id).forEach(kn => {
+                body.innerHTML += `<tr class="row-knowledge no-print"><td colspan="100" style="padding-left:15px;">↳ ${kn.latex}</td></tr>`;
+
+                data.qs.filter(q => q.knowledgeIds?.includes(kn.id)).forEach(q => {
+                    const isSelected = selectedQs.has(q.id);
+                    const row = document.createElement('tr');
+                    row.className = "row-question " + (isSelected ? "selected-for-quiz" : "no-print");
+
+                    let cellHtml = `
+                        <td class="col-q">
+                            <div class="q-text"><strong>${isSelected ? 'Q'+(qIndex++)+'.' : ''}</strong> ${q.latexQuestion}</div>
+                            <div class="sol-box"><strong>Solution:</strong><br>${q.latexSolution || 'No solution.'}</div>
+                        </td>
+                        <td class="col-select no-print">
+                            <input type="checkbox" style="width:18px;height:18px;" ${isSelected?'checked':''} onchange="toggleQ('${q.id}', this)">
+                        </td>
+                    `;
+                    studentQuizzes.forEach(z => {
+                        cellHtml += `<td class="col-quiz no-print" style="color:var(--success); font-weight:900;">${z.questionIds.includes(q.id)?'✓':''}</td>`;
+                    });
+                    row.innerHTML = cellHtml;
+                    body.appendChild(row);
+                });
+            });
+        });
+        if (window.MathJax) MathJax.typesetPromise();
+    }
+
+    window.toggleQ = (id, cb) => {
+        cb.checked ? selectedQs.add(id) : selectedQs.delete(id);
+        document.getElementById('selCount').innerText = selectedQs.size;
+        renderTable();
+    };
+
+    window.enterEditMode = (quizId) => {
+        const quiz = data.quizzes.find(z => z.id === quizId);
+        currentEditQuizId = quizId;
+        selectedQs = new Set(quiz.questionIds);
+        document.getElementById('selCount').innerText = selectedQs.size;
+        document.getElementById('editBanner').style.display = 'block';
+        document.getElementById('mainBtn').innerText = "Update Quiz Record";
+        renderTable();
+    };
+
+    window.exitEditMode = () => {
+        currentEditQuizId = null;
+        selectedQs.clear();
+        document.getElementById('selCount').innerText = "0";
+        document.getElementById('editBanner').style.display = 'none';
+        document.getElementById('mainBtn').innerText = "Sync & Export";
+        renderTable();
+    };
+
+    window.handleSyncExport = async () => {
+        const sId = document.getElementById('studentSelect').value;
+        if(selectedQs.size === 0) return alert("Please select questions.");
+        const qArray = Array.from(selectedQs);
+        const includeSols = document.getElementById('includeSols').checked;
+
+        if(currentEditQuizId) {
+            await updateDoc(doc(db, "Quizzes", currentEditQuizId), { questionIds: qArray, includeSolutions: includeSols });
+            await loadData();
+            exitEditMode();
+        } else {
+            const dateName = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+            await addDoc(collection(db, "Quizzes"), { studentId: sId, quizName: dateName, questionIds: qArray, includeSolutions: includeSols, timestamp: Date.now() });
+            
+            document.body.classList.add('print-active');
+            if(includeSols) document.body.classList.add('show-sols');
+            await loadData();
+            renderTable();
+            setTimeout(() => {
+                window.print();
+                document.body.classList.remove('print-active', 'show-sols');
+                selectedQs.clear();
+                exitEditMode();
+            }, 800);
+        }
+    };
+
+    window.reprintQuiz = (quizId, forceSols) => {
+        const quiz = data.quizzes.find(z => z.id === quizId);
+        selectedQs = new Set(quiz.questionIds);
+        document.body.classList.add('print-active');
+        if(forceSols || quiz.includeSolutions) document.body.classList.add('show-sols');
+        renderTable();
+        setTimeout(() => {
+            window.print();
+            document.body.classList.remove('print-active', 'show-sols');
+            selectedQs.clear();
+            renderTable();
+        }, 1000);
+    };
+
+    window.deleteQuiz = async (id) => {
+        if(confirm("Delete this quiz history?")) {
+            await deleteDoc(doc(db, "Quizzes", id));
+            await loadData();
+            renderTable();
+        }
+    };
+
+    window.addStudent = async () => {
+        const name = document.getElementById('newStudentName').value;
+        if(name) {
+            await addDoc(collection(db, "Students"), { name });
+            document.getElementById('newStudentName').value = "";
+            await loadData();
+        }
+    };
+
+    loadData();
+</script>
+</body>
+</html>
