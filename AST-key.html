@@ -33,7 +33,26 @@
             }
         }
 
+        // NEW: Refresh function that keeps your UI state
+        window.refreshData = async (btn) => {
+            btn.classList.add('btn-loading');
+            try {
+                // We reload everything to ensure full sync with DB
+                await loadFilters();
+                await loadKnowledge();
+                await loadQuestions();
+                console.log("Database synced.");
+            } catch (err) {
+                alert("Refresh failed: " + err.message);
+            } finally {
+                btn.classList.remove('btn-loading');
+            }
+        };
+
         async function loadFilters() {
+            // Save current selections before rebuilding HTML
+            const savedFilters = Array.from(document.querySelectorAll('.filter-select')).map(s => s.value);
+            
             const snap = await getDocs(collection(db, "Category"));
             const results = [];
             categoryLookup = {}; 
@@ -55,7 +74,7 @@
             viewCat.innerHTML = template;
 
             const roots = results.filter(c => !c.parent).sort((a,b) => (a.order || 0) - (b.order || 0));
-            roots.forEach(root => {
+            roots.forEach((root, index) => {
                 const div = document.createElement('div');
                 div.className = 'filter-group';
                 div.innerHTML = `<strong>${root.name}</strong>`;
@@ -70,6 +89,10 @@
                     sel.innerHTML += `<option value="${child.id}">${child.name}</option>`;
                     optGroup.innerHTML += `<option value="${child.id}">${child.name}</option>`;
                 });
+
+                // Restore previous selection if it exists
+                if (savedFilters[index]) sel.value = savedFilters[index];
+
                 div.appendChild(sel);
                 panel.appendChild(div);
                 
@@ -305,6 +328,8 @@
 
         window.exitFocusMode = () => {
             document.getElementById('focus-view').style.display = 'none';
+            document.getElementById('main-content-view').style.block = 'block';
+            // Hack to fix 'block' string error if it happens
             document.getElementById('main-content-view').style.display = 'block';
         };
 
@@ -399,9 +424,7 @@
         .sol-title { background: #fff1b8; padding: 5px 15px; font-size: 12px; font-weight: bold; color: #874d00; text-transform: uppercase; border-bottom: 1px solid #ffe58f; }
         .s-content { padding: 15px; white-space: pre-wrap; line-height: 1.6; color: #333; }
         
-        /* Global toggle */
         .show-sol .sol-box { display: block !important; }
-        /* Individual toggle */
         .force-show-sol .sol-box { display: block !important; }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display:none; justify-content:center; align-items:center; z-index:6000; }
@@ -420,6 +443,8 @@
     <div id="app-wrapper">
         <div id="main-content-view">
             <div class="floating-actions">
+                <!-- Refresh Button Added Here -->
+                <button onclick="refreshData(this)" class="primary-btn" style="background:#52c41a">Refresh Data</button>
                 <button onclick="document.getElementById('viewLibraryModal').style.display='flex'; renderViewLibrary();" class="primary-btn" style="background:#fa8c16">View Library</button>
                 <button onclick="document.getElementById('knowModal').style.display='flex'" class="primary-btn" style="background:#722ed1">Add Knowledge</button>
             </div>
@@ -445,6 +470,7 @@
         </div>
     </div>
 
+    <!-- Modals (Unchanged but included for completeness) -->
     <div id="viewLibraryModal" class="modal-overlay">
         <div class="modal-content">
             <h3>Knowledge Library</h3>
