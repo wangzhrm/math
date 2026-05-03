@@ -99,6 +99,10 @@
             body { background: white; padding: 0; }
             .header, .filter-panel, .item-actions, .add-btn, .print-mode-btn, .do-print-btn, .print-checkbox, .fold-icon, .q-count-bar { display: none !important; }
             .chapter-section { box-shadow: none; border: none; margin-bottom: 40px; }
+            
+            /* FIXED: Hide the entire chapter section if no items inside are selected for print */
+            .chapter-section:not(:has(.selected-for-print)) { display: none !important; }
+            
             .knowledge-item:not(.selected-for-print) { display: none !important; }
         }
     </style>
@@ -183,13 +187,11 @@
 
     async function init() {
         await fetchData();
-        // Filters only show chapters that actually have content in the library
         generateFilterUI();
         renderUI();
     }
 
     async function fetchData() {
-        // Fetch Knowledge first to see which chapters are actually used
         const knSnap = await getDocs(collection(db, "Knowledge"));
         knowledgeBase = knSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -208,7 +210,6 @@
 
         document.getElementById('chapSelect').innerHTML = chapters.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
         
-        // Default: Show all used chapters
         chapters.forEach(c => selectedChapterIds.add(c.id));
     }
 
@@ -285,7 +286,6 @@
         if (window.MathJax) MathJax.typesetPromise();
     }
 
-    // Logic Functions
     window.toggleFold = (id) => document.getElementById(`sec-${id}`).classList.toggle('folded');
     window.toggleSelectionMode = () => {
         document.body.classList.toggle('selection-mode');
