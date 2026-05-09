@@ -241,6 +241,7 @@ button:hover { opacity: 0.9; }
     <div id="knowledgeLibrary"></div>
 </div>
 
+<!-- Knowledge Context Modal -->
 <div id="questionModal" class="modal-overlay">
     <div class="modal-content">
         <span class="modal-header-actions"><button class="action-btn export-btn" onclick="exportCurrentView()">Export HTML</button></span>
@@ -251,6 +252,7 @@ button:hover { opacity: 0.9; }
     </div>
 </div>
 
+<!-- Knowledge Content Editor Modal -->
 <div id="editModal" class="modal-overlay">
     <div class="modal-content" style="width: 700px;">
         <h3 id="modalTitle">Knowledge Editor</h3>
@@ -272,6 +274,26 @@ button:hover { opacity: 0.9; }
         <div style="display:flex; gap:10px;">
             <button onclick="closeEditModal()" style="flex:1; background:#eee;">Cancel</button>
             <button onclick="saveData()" style="flex:2; background:var(--primary); color:white;">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Question Editor Modal -->
+<div id="questionEditModal" class="modal-overlay">
+    <div class="modal-content" style="width: 700px;">
+        <h3>Question Editor</h3>
+        <input type="hidden" id="editQuestionId">
+        <div style="margin-bottom:15px;">
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">Question Code (LaTeX)</label>
+            <textarea id="qLatexInput" placeholder="Edit question code..." style="width: 100%; height: 150px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace;"></textarea>
+        </div>
+        <div style="margin-bottom:15px;">
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">Solution Code (LaTeX)</label>
+            <textarea id="qSolInput" placeholder="Edit solution code..." style="width: 100%; height: 100px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-family: monospace;"></textarea>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button onclick="closeQuestionEditModal()" style="flex:1; background:#eee;">Cancel</button>
+            <button onclick="saveQuestionData()" style="flex:2; background:var(--accent); color:white;">Update Question</button>
         </div>
     </div>
 </div>
@@ -411,11 +433,10 @@ function renderUI() {
     if (window.MathJax) MathJax.typesetPromise();
 }
 
-/* --- NEW: Live Preview Logic --- */
 window.updatePreview = () => {
     const input = document.getElementById('latexInput').value;
     const preview = document.getElementById('latexPreview');
-    preview.innerHTML = input; // No white-space pre-wrap logic here to match your rendering style
+    preview.innerHTML = input;
     if (window.MathJax) {
         MathJax.typesetPromise([preview]);
     }
@@ -432,7 +453,10 @@ window.openQuestionFocus = (kId) => {
     } else {
         listContainer.innerHTML = linkedQs.map((q, idx) => `
         <div class="q-focus-card">
-            <div style="font-weight:bold; color:#888; margin-bottom:10px;">Question ${idx + 1}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
+                <span style="font-weight:bold; color:#888;">Question ${idx + 1}</span>
+                <button class="action-btn" onclick="openQuestionEditModal('${q.id}', '${kId}')">Edit Code</button>
+            </div>
             <div class="q-text">${q.latexQuestion}</div>
             <button class="sol-btn" onclick="toggleSolution(this)">View Solution</button>
             <div class="sol-container">${q.latexSolution || 'No solution provided.'}</div>
@@ -444,6 +468,46 @@ window.openQuestionFocus = (kId) => {
     
     if (window.MathJax) {
         MathJax.typesetPromise([listContainer, document.getElementById('modalKnowledgeContext')]);
+    }
+};
+
+window.openQuestionEditModal = (qId, parentKId) => {
+    const q = allQuestions.find(item => item.id === qId);
+    if (!q) return;
+    
+    document.getElementById('editQuestionId').value = qId;
+    document.getElementById('qLatexInput').value = q.latexQuestion || "";
+    document.getElementById('qSolInput').value = q.latexSolution || "";
+    // Store parent KId to refresh the view correctly later
+    document.getElementById('questionEditModal').setAttribute('data-parent-kid', parentKId);
+    document.getElementById('questionEditModal').style.display = 'flex';
+};
+
+window.closeQuestionEditModal = () => {
+    document.getElementById('questionEditModal').style.display = 'none';
+};
+
+window.saveQuestionData = async () => {
+    const id = document.getElementById('editQuestionId').value;
+    const latexQuestion = document.getElementById('qLatexInput').value;
+    const latexSolution = document.getElementById('qSolInput').value;
+    const parentKId = document.getElementById('questionEditModal').getAttribute('data-parent-kid');
+    
+    try {
+        await updateDoc(doc(db, "MathQuestion", id), { 
+            latexQuestion: latexQuestion,
+            latexSolution: latexSolution 
+        });
+        
+        closeQuestionEditModal();
+        await fetchData(); 
+        // Refresh the underlying UI and the Question Focus view
+        renderUI();
+        if(parentKId) openQuestionFocus(parentKId);
+        
+        alert("Question code updated!");
+    } catch (e) {
+        console.error("Error updating question: ", e);
     }
 };
 
@@ -461,7 +525,7 @@ window.closeEditModal = () => document.getElementById('editModal').style.display
 window.openAddModal = () => {
     document.getElementById('editTargetId').value = "";
     document.getElementById('latexInput').value = "";
-    document.getElementById('latexPreview').innerHTML = ""; // Clear preview
+    document.getElementById('latexPreview').innerHTML = "";
     document.getElementById('editModal').style.display = 'flex';
 };
 
@@ -470,7 +534,7 @@ window.openEditModal = (id) => {
     document.getElementById('editTargetId').value = id;
     document.getElementById('latexInput').value = item.latex;
     document.getElementById('chapSelect').value = item.categoryId;
-    window.updatePreview(); // Trigger initial preview
+    window.updatePreview();
     document.getElementById('editModal').style.display = 'flex';
 };
 
@@ -519,7 +583,7 @@ window.exportCurrentView = () => {
     const knowledgeElem = document.getElementById('modalKnowledgeContext').cloneNode(true);
     const questionsContainer = document.getElementById('modalQuestionList');
     const clone = questionsContainer.cloneNode(true);
-    clone.querySelectorAll('.sol-btn, .sol-container').forEach(el => el.remove());
+    clone.querySelectorAll('.sol-btn, .sol-container, .action-btn').forEach(el => el.remove());
     
     const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
