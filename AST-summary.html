@@ -349,9 +349,13 @@
         const qSnap = await getDocs(query(collection(db, "MathQuestion"), where("knowledgeIds", "array-contains", kId)));
         container.innerHTML = qSnap.empty ? "No questions." : qSnap.docs.map((d, i) => {
             const q = d.data();
+            const diagramHtml = q.diagramUrl
+                ? `<div style="margin-top:10px;"><img src="${q.diagramUrl}" style="max-width:100%; height:auto; border-radius:4px;"></div>`
+                : "";
             return `<div class="q-card">
                 <div class="q-header-row"><strong>Q ${i+1}</strong><button class="action-btn" onclick="toggleSingleSol(this)">Solution</button></div>
                 <div>${q.latexQuestion || ""}</div>
+                ${diagramHtml}
                 <div class="sol-box"><div class="sol-header">Solution</div><div class="s-content">${q.latexSolution || ""}</div></div>
             </div>`;
         }).join('');
