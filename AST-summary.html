@@ -91,6 +91,10 @@
 
         .q-card { border: 1px solid #e1e4e8; padding: 20px; margin-bottom: 20px; border-radius: 12px; background: white; }
         .q-header-row { margin-bottom:15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; display:flex; justify-content:space-between; align-items:center; }
+        .q-header-left { display: flex; align-items: center; gap: 10px; }
+        .star-toggle { cursor: pointer; font-size: 22px; line-height: 1; user-select: none; color: #d9d9d9; transition: color 0.15s ease, transform 0.1s ease; }
+        .star-toggle:hover { transform: scale(1.15); }
+        .star-toggle.starred { color: #faad14; }
         .sol-box { margin-top: 20px; background-color: var(--sol-bg); border: 1px solid var(--sol-border); border-radius: 8px; overflow: hidden; display: none; }
         .sol-header { background: #f0f5f0; padding: 8px 15px; font-weight: bold; color: #2d5a2d; font-size: 11px; border-bottom: 1px solid #d3e4d3; text-transform: uppercase; }
         .s-content { padding: 15px; color: #1a331a; }
@@ -352,14 +356,35 @@
             const diagramHtml = q.diagramUrl
                 ? `<div style="margin-top:10px;"><img src="${q.diagramUrl}" style="max-width:100%; height:auto; border-radius:4px;"></div>`
                 : "";
+            const isStarred = q.practice === true;
             return `<div class="q-card">
-                <div class="q-header-row"><strong>Q ${i+1}</strong><button class="action-btn" onclick="toggleSingleSol(this)">Solution</button></div>
+                <div class="q-header-row">
+                    <div class="q-header-left">
+                        <span class="star-toggle${isStarred ? ' starred' : ''}" data-qid="${d.id}" onclick="toggleStar(this)" title="Mark to practice in class">${isStarred ? '★' : '☆'}</span>
+                        <strong>Q ${i+1}</strong>
+                    </div>
+                    <button class="action-btn" onclick="toggleSingleSol(this)">Solution</button>
+                </div>
                 <div>${q.latexQuestion || ""}</div>
                 ${diagramHtml}
                 <div class="sol-box"><div class="sol-header">Solution</div><div class="s-content">${q.latexSolution || ""}</div></div>
             </div>`;
         }).join('');
         if (window.MathJax) MathJax.typesetPromise([container]);
+    };
+    window.toggleStar = async (el) => {
+        const qId = el.getAttribute('data-qid');
+        const nowStarred = !el.classList.contains('starred');
+        el.classList.toggle('starred', nowStarred);
+        el.textContent = nowStarred ? '★' : '☆';
+        try {
+            await updateDoc(doc(db, "MathQuestion", qId), { practice: nowStarred });
+        } catch (err) {
+            // revert UI if the write fails
+            el.classList.toggle('starred', !nowStarred);
+            el.textContent = !nowStarred ? '★' : '☆';
+            alert("Failed to save practice mark.");
+        }
     };
     window.toggleSingleSol = (btn) => {
         const sol = btn.closest('.q-card').querySelector('.sol-box');
