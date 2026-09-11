@@ -201,6 +201,81 @@
             });
         };
 
+        // ---- Helpers for the category tree (rename / delete at any depth) ----
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str == null ? "" : String(str);
+            return div.innerHTML;
+        }
+
+        function getParentId(cat) {
+            if (!cat || !cat.parent) return null;
+            return typeof cat.parent === 'string' ? cat.parent : cat.parent.id;
+        }
+
+        function collectDescendantIds(id) {
+            let ids = [id];
+            const children = allCategories.filter(c => getParentId(c) === id);
+            children.forEach(ch => { ids = ids.concat(collectDescendantIds(ch.id)); });
+            return ids;
+        }
+
+        function buildCategoryTreeHTML(parentId, depth) {
+            const children = allCategories
+                .filter(c => getParentId(c) === parentId)
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+            if (children.length === 0) return '';
+
+            let html = `<ul class="cat-tree-list" style="padding-left:${depth === 0 ? 0 : 14}px;">`;
+            children.forEach(c => {
+                html += `
+                    <li class="cat-tree-item">
+                        <div class="cat-tree-row">
+                            <span class="cat-tree-name">${escapeHtml(c.name)}</span>
+                            <div class="cat-tree-actions">
+                                <button class="tree-btn tree-rename" onclick="renameCategory('${c.id}')">Rename</button>
+                                <button class="tree-btn tree-delete" onclick="deleteCategoryTree('${c.id}')">Delete</button>
+                            </div>
+                        </div>
+                        ${buildCategoryTreeHTML(c.id, depth + 1)}
+                    </li>`;
+            });
+            html += `</ul>`;
+            return html;
+        }
+
+        window.renameCategory = async (id) => {
+            const cat = allCategories.find(c => c.id === id);
+            if (!cat) return;
+            const newName = prompt("Rename category:", cat.name);
+            if (newName === null) return; // user cancelled
+            const trimmed = newName.trim();
+            if (!trimmed) return alert("Name cannot be empty");
+            try {
+                await setDoc(doc(db, COL_CATEGORY, id), { name: trimmed }, { merge: true });
+                await renderApp();
+                await fetchQuestions();
+            } catch (e) { alert(e.message); }
+        };
+
+        window.deleteCategoryTree = async (id) => {
+            const cat = allCategories.find(c => c.id === id);
+            if (!cat) return;
+            const idsToDelete = collectDescendantIds(id);
+            const childCount = idsToDelete.length - 1;
+            const msg = childCount > 0
+                ? `Delete "${cat.name}" and its ${childCount} sub-categor${childCount === 1 ? 'y' : 'ies'}? This cannot be undone.`
+                : `Delete "${cat.name}"? This cannot be undone.`;
+            if (!confirm(msg)) return;
+            try {
+                const batch = writeBatch(db);
+                idsToDelete.forEach(cid => batch.delete(doc(db, COL_CATEGORY, cid)));
+                await batch.commit();
+                await renderApp();
+                await fetchQuestions();
+            } catch (e) { alert(e.message); }
+        };
+
         window.renderApp = async () => {
             const snap = await getDocs(query(collection(db, COL_CATEGORY), orderBy("order")));
             allCategories = [];
@@ -241,6 +316,14 @@
                 editor.appendChild(box);
                 targetParent.innerHTML += `<option value="${root.id}">${root.name}</option>`;
             });
+
+            // Full hierarchy tree in the drawer, with rename/delete at every level
+            const treeContainer = document.getElementById('categoryTree');
+            if (treeContainer) {
+                treeContainer.innerHTML = allCategories.length
+                    ? buildCategoryTreeHTML(null, 0)
+                    : '<div style="color:#999; font-size:12px; padding:10px 0;">No categories yet.</div>';
+            }
         }
 
         window.addCategory = async () => {
@@ -304,6 +387,19 @@
         .cat-header-row { background: #fafafa; padding: 4px 10px; border: 1px solid #ddd; border-bottom: none; border-radius: 4px 4px 0 0; display: flex; justify-content: space-between; align-items: center; }
         .reorder-btn { padding: 2px 6px; font-size: 10px; background: white; border: 1px solid #ccc; color: #666; font-weight: normal; }
         .reorder-btn:hover { background: #f0f0f0; }
+
+        /* Category tree (rename / delete) in the drawer */
+        .cat-tree-list { list-style: none; margin: 0; }
+        .cat-tree-item { margin: 2px 0; }
+        .cat-tree-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 6px; border-radius: 4px; }
+        .cat-tree-row:hover { background: #f5f5f5; }
+        .cat-tree-name { font-size: 12.5px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .cat-tree-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        .tree-btn { padding: 2px 7px; font-size: 10px; font-weight: normal; }
+        .tree-rename { background: white; border: 1px solid var(--primary); color: var(--primary); }
+        .tree-rename:hover { background: #e6f7ff; }
+        .tree-delete { background: white; border: 1px solid var(--danger); color: var(--danger); }
+        .tree-delete:hover { background: #fff1f0; }
     </style>
 </head>
 <body>
