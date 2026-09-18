@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secant → Tangent: A Slope Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js"></script>
+<style>
+  :root{
+    --paper:#F5F1E7;
+    --paper-2:#EDE7D8;
+    --ink:#1D2B4F;
+    --ink-soft:#4C5A7A;
+    --rule:#D8D0BA;
+    --amber:#C7830C;
+    --amber-soft:#F3E1BC;
+    --green:#1E8F6F;
+    --green-soft:#CFE9DE;
+    --card:#FFFFFF;
+    --shadow: 0 1px 0 rgba(29,43,79,0.06);
+    --danger:#B23A3A;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --paper:#181C24;
+      --paper-2:#1F2430;
+      --ink:#EDEAE0;
+      --ink-soft:#A7AEC2;
+      --rule:#333A4A;
+      --amber:#E2A23B;
+      --amber-soft:#3A2F1A;
+      --green:#4FC79A;
+      --green-soft:#173428;
+      --card:#20242F;
+      --shadow: 0 1px 0 rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#181C24;
+    --paper-2:#1F2430;
+    --ink:#EDEAE0;
+    --ink-soft:#A7AEC2;
+    --rule:#333A4A;
+    --amber:#E2A23B;
+    --amber-soft:#3A2F1A;
+    --green:#4FC79A;
+    --green-soft:#173428;
+    --card:#20242F;
+    --shadow: 0 1px 0 rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body{
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+  }
+
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap: 10px 24px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 18px;
+    margin-bottom: 26px;
+  }
+  header h1{
+    font-family:'Fraunces', serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-size: clamp(1.6rem, 3vw, 2.35rem);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  header h1 em{
+    font-style: italic;
+    color: var(--amber);
+  }
+  header p{
+    margin:0;
+    color: var(--ink-soft);
+    font-size: 0.98rem;
+    max-width: 46ch;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+    align-items:start;
+  }
+  @media (max-width: 860px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .panel + .panel{ margin-top: 18px; }
+
+  .field-label{
+    display:block;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .fn-row{ display:flex; gap:8px; }
+  input[type="text"]{
+    flex:1;
+    min-width:0;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 1rem;
+    padding: 10px 12px;
+    border: 1.5px solid var(--rule);
+    border-radius: 7px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  input[type="text"]:focus{
+    outline: 2px solid var(--amber);
+    outline-offset: 1px;
+  }
+  button{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    font-size: 0.92rem;
+    cursor: pointer;
+    border-radius: 7px;
+    border: 1.5px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 16px;
+    transition: transform 0.08s ease, opacity 0.15s ease;
+  }
+  button:hover{ opacity: 0.88; }
+  button:active{ transform: translateY(1px); }
+  button.ghost{
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--rule);
+  }
+  button.ghost:hover{ border-color: var(--ink); opacity:1; }
+
+  .presets{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--rule);
+    background: var(--paper-2);
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .chip:hover{ border-color: var(--ink-soft); color: var(--ink); }
+
+  .fn-error{
+    font-size: 0.82rem;
+    color: var(--danger);
+    margin-top: 8px;
+    min-height: 1.1em;
+  }
+
+  .slider-row{ margin-top: 18px; }
+  input[type="range"]{
+    width: 100%;
+    accent-color: var(--ink);
+  }
+  .slider-value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .panel h2{
+    font-family:'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1.05rem;
+    margin: 0 0 14px;
+  }
+
+  .explain{
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  .explain strong{ color: var(--ink); font-weight: 600; }
+
+  .graph-card{
+    padding: 8px 8px 0;
+  }
+  svg{ display:block; width:100%; height:auto; touch-action: none; }
+
+  .handle{ cursor: grab; }
+  .handle:active{ cursor: grabbing; }
+  .handle:focus{ outline: none; }
+  .handle:focus circle.ring{ stroke-width: 3.5; }
+
+  .readout{
+    display:grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    align-items:center;
+    padding: 20px 22px;
+    margin-top: 18px;
+    border-radius: 10px;
+    border: 1px solid var(--rule);
+    background: var(--paper-2);
+    transition: background 0.25s ease, border-color 0.25s ease;
+  }
+  .readout .label{
+    font-size: 0.78rem;
+    text-transform: none;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .readout .slope-value{
+    font-family:'Fraunces', serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 5vw, 2.9rem);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .equation{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+    margin-top: 8px;
+  }
+  .readout .meta{
+    text-align:right;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    line-height: 1.7;
+  }
+  .badge{
+    display:inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .legend{
+    display:flex;
+    gap: 18px;
+    margin-top: 14px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    flex-wrap: wrap;
+  }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .swatch{ width:14px; height:3px; border-radius:2px; display:inline-block; }
+
+  footer{
+    margin-top: 30px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>From secant to <em>tangent</em></h1>
+      <p>Drag point B toward point A and watch the secant line's slope settle into the derivative.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <div>
+      <div class="panel">
+        <h2>The curve</h2>
+        <label class="field-label" for="fnInput">f(x) =</label>
+        <div class="fn-row">
+          <input type="text" id="fnInput" value="x^2" autocomplete="off" spellcheck="false">
+          <button id="plotBtn">Plot</button>
+        </div>
+        <div class="fn-error" id="fnError"></div>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Point A</h2>
+        <div class="slider-row">
+          <label class="field-label" for="aSlider">Fixed point, x<sub>A</sub></label>
+          <input type="range" id="aSlider" min="-6" max="6" step="0.01" value="-2">
+          <div class="slider-value" id="aSliderVal">x = −2.00</div>
+        </div>
+        <button class="ghost" id="resetBtn" style="margin-top:14px; width:100%;">Reset points</button>
+      </div>
+
+      <div class="panel">
+        <h2>What's happening</h2>
+        <p class="explain" id="explainText">
+          Point <strong>B</strong> sits far from point <strong>A</strong>, so the line through them is a
+          <strong>secant line</strong> — it crosses the curve at two separate points. Its slope is the
+          average rate of change of f between A and B.
+        </p>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div>
+      <div class="panel graph-card">
+        <svg id="graph" viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="plotClip">
+              <rect id="clipRect" x="0" y="0" width="0" height="0"></rect>
+            </clipPath>
+          </defs>
+          <g id="gridLayer"></g>
+          <g id="axisLayer"></g>
+          <g clip-path="url(#plotClip)">
+            <path id="curvePath" fill="none" stroke-width="2.5"></path>
+            <line id="linePath" stroke-width="3"></line>
+          </g>
+          <g id="pointsLayer"></g>
+        </svg>
+      </div>
+
+      <div class="readout">
+        <div>
+          <div class="label" id="readoutLabel">Secant slope</div>
+          <div class="slope-value" id="slopeValue">—</div>
+          <div class="equation" id="equationText">y = mx + b</div>
+        </div>
+        <div class="meta">
+          <div>x<sub>A</sub> = <span id="metaAx">—</span></div>
+          <div>x<sub>B</sub> = <span id="metaBx">—</span></div>
+          <div>Δx = <span id="metaDx">—</span></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--ink)"></i> f(x)</span>
+        <span><i class="swatch" style="background:var(--amber)"></i> secant line (B far from A)</span>
+        <span><i class="swatch" style="background:var(--green)"></i> tangent line (B → A)</span>
+      </div>
+
+      <footer>Drag the two dots on the curve — or use arrow keys after clicking one — to explore how a secant line becomes a tangent line as Δx → 0.</footer>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- layout constants ----------
+  const VB_W = 800, VB_H = 480;
+  const MARGIN = { top: 24, right: 24, bottom: 40, left: 46 };
+  const plotW = VB_W - MARGIN.left - MARGIN.right;
+  const plotH = VB_H - MARGIN.top - MARGIN.bottom;
+
+  const svg = document.getElementById('graph');
+  const gridLayer = document.getElementById('gridLayer');
+  const axisLayer = document.getElementById('axisLayer');
+  const curvePath = document.getElementById('curvePath');
+  const linePath = document.getElementById('linePath');
+  const pointsLayer = document.getElementById('pointsLayer');
+  const clipRect = document.getElementById('clipRect');
+
+  clipRect.setAttribute('x', MARGIN.left);
+  clipRect.setAttribute('y', MARGIN.top);
+  clipRect.setAttribute('width', plotW);
+  clipRect.setAttribute('height', plotH);
+
+  // ---------- state ----------
+  let xMin = -6, xMax = 6, yMin = -2, yMax = 10;
+  let validXMin = xMin, validXMax = xMax;
+  let compiledFn = null;
+  let fnLabel = 'x^2';
+  let ptA = { x: -2 };
+  let ptB = { x: 2.6 };
+  let dragging = null;
+
+  const ROOT = getComputedStyle(document.documentElement);
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  // ---------- math helpers ----------
+  function evalF(x){
+    if(!compiledFn) return NaN;
+    try{
+      const v = compiledFn.evaluate({ x: x });
+      return (typeof v === 'number' && isFinite(v)) ? v : NaN;
+    }catch(e){ return NaN; }
+  }
+
+  function derivativeAt(x){
+    const h = (xMax - xMin) * 0.0006;
+    const y1 = evalF(x - h), y2 = evalF(x + h);
+    if(isFinite(y1) && isFinite(y2)) return (y2 - y1) / (2*h);
+    const y0 = evalF(x);
+    const yF = evalF(x + h);
+    if(isFinite(y0) && isFinite(yF)) return (yF - y0) / h;
+    return NaN;
+  }
+
+  function compileFn(str){
+    try{
+      const node = math.parse(str);
+      const compiled = node.compile();
+      const test = compiled.evaluate({ x: 1 });
+      if(typeof test !== 'number') throw new Error('Expression must be a function of x');
+      compiledFn = compiled;
+      fnLabel = str;
+      return { ok: true };
+    }catch(e){
+      return { ok: false, message: e.message || 'Could not parse that expression.' };
+    }
+  }
+
+  function fitDomain(){
+    const N = 600;
+    let vals = [];
+    validXMin = null; validXMax = null;
+    for(let i=0;i<=N;i++){
+      const x = xMin + (xMax - xMin) * i / N;
+      const y = evalF(x);
+      if(isFinite(y)){
+        vals.push(y);
+        if(validXMin === null) validXMin = x;
+        validXMax = x;
+      }
+    }
+    if(vals.length === 0){ yMin = -10; yMax = 10; validXMin = xMin; validXMax = xMax; return; }
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    if(!isFinite(lo) || !isFinite(hi) || lo === hi){ lo -= 1; hi += 1; }
+    // guard against extreme outliers (e.g. near-asymptote sampling) skewing the fit
+    vals.sort((a,b)=>a-b);
+    const p = Math.max(1, Math.floor(vals.length*0.02));
+    lo = vals[p]; hi = vals[vals.length-1-p];
+    if(lo === hi){ lo -= 1; hi += 1; }
+    const pad = (hi - lo) * 0.18;
+    yMin = lo - pad; yMax = hi + pad;
+  }
+
+  // ---------- coordinate transforms ----------
+  function xToPx(x){ return MARGIN.left + (x - xMin) / (xMax - xMin) * plotW; }
+  function yToPx(y){ return MARGIN.top + (yMax - y) / (yMax - yMin) * plotH; }
+  function pxToX(px){ return xMin + (px - MARGIN.left) / plotW * (xMax - xMin); }
+
+  // ---------- drawing: grid + axes ----------
+  function niceStep(range, targetTicks){
+    const raw = range / targetTicks;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const norm = raw / mag;
+    let step;
+    if(norm < 1.5) step = 1;
+    else if(norm < 3.5) step = 2;
+    else if(norm < 7.5) step = 5;
+    else step = 10;
+    return step * mag;
+  }
+
+  function drawGridAndAxes(){
+    gridLayer.innerHTML = '';
+    axisLayer.innerHTML = '';
+    const ink = cssVar('--ink');
+    const rule = cssVar('--rule');
+    const inkSoft = cssVar('--ink-soft');
+
+    const xStep = niceStep(xMax - xMin, 10);
+    const yStep = niceStep(yMax - yMin, 8);
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+
+    for(let gx = Math.ceil(xMin/xStep)*xStep; gx <= xMax; gx += xStep){
+      const px = xToPx(gx);
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('x1', px); line.setAttribute('x2', px);
+      line.setAttribute('y1', MARGIN.top); line.setAttribute('y2', MARGIN.top + plotH);
+      line.setAttribute('stroke', rule); line.setAttribute('stroke-width', '1');
+      gridLayer.appendChild(line);
+      if(Math.abs(gx) > xStep*0.001){
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', px); label.setAttribute('y', MARGIN.top + plotH + 18);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('font-size', '11'); label.setAttribute('font-family', 'IBM Plex Mono, monospace');
+        label.setAttribute('fill', inkSoft);
+        label.textContent = Number(gx.toFixed(2)).toString();
+        axisLayer.appendChild(label);
+      }
+    }
+    for(let gy = Math.ceil(yMin/yStep)*yStep; gy <= yMax; gy += yStep){
+      const py = yToPx(gy);
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('y1', py); line.setAttribute('y2', py);
+      line.setAttribute('x1', MARGIN.left); line.setAttribute('x2', MARGIN.left + plotW);
+      line.setAttribute('stroke', rule); line.setAttribute('stroke-width', '1');
+      gridLayer.appendChild(line);
+      if(Math.abs(gy) > yStep*0.001){
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', MARGIN.left - 8); label.setAttribute('y', py + 4);
+        label.setAttribute('text-anchor', 'end');
+        label.setAttribute('font-size', '11'); label.setAttribute('font-family', 'IBM Plex Mono, monospace');
+        label.setAttribute('fill', inkSoft);
+        label.textContent = Number(gy.toFixed(2)).toString();
+        axisLayer.appendChild(label);
+      }
+    }
+
+    // axes (x=0 / y=0) if in range
+    if(0 >= xMin && 0 <= xMax){
+      const px = xToPx(0);
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('x1', px); line.setAttribute('x2', px);
+      line.setAttribute('y1', MARGIN.top); line.setAttribute('y2', MARGIN.top + plotH);
+      line.setAttribute('stroke', ink); line.setAttribute('stroke-width', '1.5');
+      axisLayer.appendChild(line);
+    }
+    if(0 >= yMin && 0 <= yMax){
+      const py = yToPx(0);
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('y1', py); line.setAttribute('y2', py);
+      line.setAttribute('x1', MARGIN.left); line.setAttribute('x2', MARGIN.left + plotW);
+      line.setAttribute('stroke', ink); line.setAttribute('stroke-width', '1.5');
+      axisLayer.appendChild(line);
+    }
+
+    // plot border
+    const border = document.createElementNS(svgNS, 'rect');
+    border.setAttribute('x', MARGIN.left); border.setAttribute('y', MARGIN.top);
+    border.setAttribute('width', plotW); border.setAttribute('height', plotH);
+    border.setAttribute('fill', 'none'); border.setAttribute('stroke', rule); border.setAttribute('stroke-width', '1');
+    axisLayer.appendChild(border);
+  }
+
+  // ---------- drawing: curve ----------
+  function buildCurvePath(){
+    const N = 700;
+    let d = '';
+    let havePrev = false;
+    let prevPy = null;
+    for(let i=0;i<=N;i++){
+      const x = xMin + (xMax - xMin) * i / N;
+      const y = evalF(x);
+      if(!isFinite(y)){ havePrev = false; continue; }
+      const px = xToPx(x), py = yToPx(y);
+      if(havePrev && Math.abs(py - prevPy) > plotH * 1.4){ havePrev = false; }
+      d += (havePrev ? 'L ' : 'M ') + px.toFixed(2) + ' ' + py.toFixed(2) + ' ';
+      havePrev = true;
+      prevPy = py;
+    }
+    curvePath.setAttribute('d', d);
+    curvePath.setAttribute('stroke', cssVar('--ink'));
+  }
+
+  // ---------- color interpolation ----------
+  function hexToRgb(hex){
+    hex = hex.replace('#','');
+    if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+    const num = parseInt(hex,16);
+    return [(num>>16)&255, (num>>8)&255, num&255];
+  }
+  function lerpColor(hexA, hexB, t){
+    const a = hexToRgb(hexA), b = hexToRgb(hexB);
+    const r = Math.round(a[0] + (b[0]-a[0])*t);
+    const g = Math.round(a[1] + (b[1]-a[1])*t);
+    const bl = Math.round(a[2] + (b[2]-a[2])*t);
+    return 'rgb(' + r + ',' + g + ',' + bl + ')';
+  }
+
+  // ---------- points layer ----------
+  function ensurePointHandles(){
+    pointsLayer.innerHTML = '';
+    const svgNS = 'http://www.w3.org/2000/svg';
+
+    function makeHandle(id, labelText){
+      const g = document.createElementNS(svgNS, 'g');
+      g.setAttribute('class', 'handle');
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('id', id);
+      g.setAttribute('role', 'slider');
+      g.setAttribute('aria-label', 'Point ' + labelText + ' on the curve');
+
+      const ring = document.createElementNS(svgNS, 'circle');
+      ring.setAttribute('class', 'ring');
+      ring.setAttribute('r', '13');
+      ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', cssVar('--amber'));
+      ring.setAttribute('stroke-width', '2');
+      ring.setAttribute('opacity', '0.35');
+
+      const dot = document.createElementNS(svgNS, 'circle');
+      dot.setAttribute('class', 'dot');
+      dot.setAttribute('r', '7');
+      dot.setAttribute('stroke', cssVar('--card'));
+      dot.setAttribute('stroke-width', '2');
+
+      const label = document.createElementNS(svgNS, 'text');
+      label.setAttribute('class', 'ptlabel');
+      label.setAttribute('y', '-18');
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-family', 'IBM Plex Mono, monospace');
+      label.setAttribute('font-weight', '600');
+      label.setAttribute('font-size', '13');
+      label.textContent = labelText;
+
+      g.appendChild(ring); g.appendChild(dot); g.appendChild(label);
+      pointsLayer.appendChild(g);
+      return { g, ring, dot, label };
+    }
+
+    handleA = makeHandle('handleA', 'A');
+    handleB = makeHandle('handleB', 'B');
+
+    attachDrag(handleA.g, 'A');
+    attachDrag(handleB.g, 'B');
+  }
+
+  let handleA, handleB;
+
+  function attachDrag(el, which){
+    el.addEventListener('pointerdown', function(evt){
+      dragging = which;
+      el.setPointerCapture(evt.pointerId);
+      evt.preventDefault();
+    });
+    el.addEventListener('pointermove', function(evt){
+      if(dragging !== which) return;
+      moveDrag(evt);
+    });
+    el.addEventListener('pointerup', function(){ dragging = null; });
+    el.addEventListener('pointercancel', function(){ dragging = null; });
+    el.addEventListener('keydown', function(evt){
+      const step = (evt.shiftKey ? 0.1 : 0.02) * (xMax - xMin);
+      let dx = 0;
+      if(evt.key === 'ArrowRight') dx = step;
+      else if(evt.key === 'ArrowLeft') dx = -step;
+      else return;
+      evt.preventDefault();
+      const pt = which === 'A' ? ptA : ptB;
+      pt.x = clamp(pt.x + dx, validXMin, validXMax);
+      if(which === 'A') syncSliderFromA();
+      render();
+    });
+  }
+
+  function moveDrag(evt){
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    const ctm = svg.getScreenCTM();
+    if(!ctm) return;
+    const loc = pt.matrixTransform(ctm.inverse());
+    let x = pxToX(loc.x);
+    x = clamp(x, validXMin, validXMax);
+    if(dragging === 'A'){ ptA.x = x; syncSliderFromA(); }
+    else if(dragging === 'B'){ ptB.x = x; }
+    render();
+  }
+
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+  // ---------- main render ----------
+  function render(){
+    const domainWidth = xMax - xMin;
+    const epsilon = domainWidth * 0.006;
+    const dx = ptB.x - ptA.x;
+    let mode = 'secant';
+    let slope;
+
+    if(Math.abs(dx) < epsilon){
+      mode = 'tangent';
+      ptB.x = ptA.x;
+      slope = derivativeAt(ptA.x);
+    }else{
+      const yA = evalF(ptA.x), yB = evalF(ptB.x);
+      slope = (yB - yA) / dx;
+    }
+
+    const yA = evalF(ptA.x);
+    const yB = evalF(ptB.x);
+
+    // color
+    const t = clamp(Math.abs(dx) / (domainWidth * 0.22), 0, 1); // 0 = at A (green), 1 = far (amber)
+    const color = mode === 'tangent' ? cssVar('--green') : lerpColor(cssVar('--green'), cssVar('--amber'), t);
+
+    // line across full x-range through A with given slope
+    if(isFinite(slope) && isFinite(yA)){
+      const x1 = xMin, x2 = xMax;
+      const y1 = yA + slope * (x1 - ptA.x);
+      const y2 = yA + slope * (x2 - ptA.x);
+      linePath.setAttribute('x1', xToPx(x1));
+      linePath.setAttribute('y1', yToPx(y1));
+      linePath.setAttribute('x2', xToPx(x2));
+      linePath.setAttribute('y2', yToPx(y2));
+      linePath.setAttribute('stroke', color);
+      linePath.setAttribute('opacity', '1');
+    }else{
+      linePath.setAttribute('opacity', '0');
+    }
+
+    // points
+    if(isFinite(yA)){
+      handleA.g.setAttribute('transform', 'translate(' + xToPx(ptA.x).toFixed(2) + ',' + yToPx(yA).toFixed(2) + ')');
+      handleA.g.style.display = '';
+      handleA.dot.setAttribute('fill', cssVar('--ink'));
+      handleA.ring.setAttribute('stroke', cssVar('--ink'));
+      handleA.label.setAttribute('fill', cssVar('--ink'));
+    }else{
+      handleA.g.style.display = 'none';
+    }
+    if(isFinite(yB)){
+      handleB.g.setAttribute('transform', 'translate(' + xToPx(ptB.x).toFixed(2) + ',' + yToPx(yB).toFixed(2) + ')');
+      handleB.g.style.display = '';
+      handleB.dot.setAttribute('fill', color);
+      handleB.ring.setAttribute('stroke', color);
+      handleB.label.setAttribute('fill', color);
+    }else{
+      handleB.g.style.display = 'none';
+    }
+
+    // readout
+    const readoutEl = document.querySelector('.readout');
+    const label = document.getElementById('readoutLabel');
+    const slopeValueEl = document.getElementById('slopeValue');
+    const equationEl = document.getElementById('equationText');
+    const explainEl = document.getElementById('explainText');
+
+    if(mode === 'tangent'){
+      label.textContent = 'Tangent slope — f′(x_A)';
+      readoutEl.style.background = cssVar('--green-soft');
+      readoutEl.style.borderColor = cssVar('--green');
+      explainEl.innerHTML = 'Point <strong>B</strong> has merged with point <strong>A</strong>. The line is now the ' +
+        '<strong>tangent line</strong> at x = ' + fmt(ptA.x) + ' — its slope is the instantaneous rate of change, ' +
+        'f′(' + fmt(ptA.x) + ') ≈ ' + fmt(slope) + '. This is the limit the secant slope was approaching.';
+    }else{
+      label.textContent = 'Secant slope — average rate of change';
+      readoutEl.style.background = cssVar('--paper-2');
+      readoutEl.style.borderColor = cssVar('--rule');
+      explainEl.innerHTML = 'Point <strong>B</strong> sits ' + fmt(Math.abs(dx)) + ' units from point <strong>A</strong>, ' +
+        'so the line through them is a <strong>secant line</strong>. Its slope, ' + fmt(slope) +
+        ', is the average rate of change of f between A and B. Drag B closer to A to watch it approach the tangent slope.';
+    }
+
+    slopeValueEl.textContent = isFinite(slope) ? fmt(slope) : '—';
+    slopeValueEl.style.color = color;
+
+    if(isFinite(slope) && isFinite(yA)){
+      const b = yA - slope * ptA.x;
+      equationEl.textContent = 'y = ' + fmt(slope) + 'x ' + (b >= 0 ? '+ ' + fmt(b) : '− ' + fmt(Math.abs(b)));
+    }else{
+      equationEl.textContent = 'y = mx + b';
+    }
+
+    document.getElementById('metaAx').textContent = fmt(ptA.x);
+    document.getElementById('metaBx').textContent = fmt(ptB.x);
+    document.getElementById('metaDx').textContent = fmt(dx);
+  }
+
+  function fmt(v, digits){
+    if(!isFinite(v)) return '—';
+    digits = digits === undefined ? 3 : digits;
+    let s = v.toFixed(digits);
+    if(/^-0(\.0+)?$/.test(s)) s = s.slice(1);
+    if(s.indexOf('.') !== -1){
+      s = s.replace(/0+$/, '').replace(/\.$/, '');
+    }
+    return s === '' || s === '-' ? '0' : s;
+  }
+
+  // ---------- UI wiring ----------
+  const fnInput = document.getElementById('fnInput');
+  const fnError = document.getElementById('fnError');
+  const aSlider = document.getElementById('aSlider');
+  const aSliderVal = document.getElementById('aSliderVal');
+
+  function syncSliderFromA(){
+    aSlider.value = ptA.x;
+    aSliderVal.textContent = 'x = ' + fmt(ptA.x);
+  }
+
+  function applyFunction(str){
+    const result = compileFn(str);
+    if(!result.ok){
+      fnError.textContent = result.message;
+      return false;
+    }
+    fnError.textContent = '';
+    fitDomain();
+    aSlider.min = validXMin.toFixed(2);
+    aSlider.max = validXMax.toFixed(2);
+    ptA.x = clamp((validXMin + validXMax) / 2 - (validXMax - validXMin) * 0.15, validXMin, validXMax);
+    ptB.x = clamp(ptA.x + (validXMax - validXMin) * 0.28, validXMin, validXMax);
+    syncSliderFromA();
+    drawGridAndAxes();
+    buildCurvePath();
+    render();
+    return true;
+  }
+
+  document.getElementById('plotBtn').addEventListener('click', function(){
+    applyFunction(fnInput.value.trim() || 'x');
+  });
+  fnInput.addEventListener('keydown', function(evt){
+    if(evt.key === 'Enter'){ applyFunction(fnInput.value.trim() || 'x'); }
+  });
+
+  const presets = [
+    { label: 'x^2', fn: 'x^2' },
+    { label: 'x^3 - 3x', fn: 'x^3 - 3*x' },
+    { label: 'sin(x)', fn: 'sin(x)' },
+    { label: 'sqrt(x + 6)', fn: 'sqrt(x + 6)' },
+    { label: 'cos(x) * x', fn: 'cos(x) * x' },
+    { label: '1 / (x - 0.2)', fn: '1 / (x - 0.2)' }
+  ];
+  const presetsEl = document.getElementById('presets');
+  presets.forEach(function(p){
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.type = 'button';
+    chip.textContent = p.label;
+    chip.addEventListener('click', function(){
+      fnInput.value = p.fn;
+      applyFunction(p.fn);
+    });
+    presetsEl.appendChild(chip);
+  });
+
+  aSlider.addEventListener('input', function(){
+    ptA.x = parseFloat(aSlider.value);
+    aSliderVal.textContent = 'x = ' + fmt(ptA.x);
+    render();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    ptA.x = clamp((validXMin + validXMax) / 2 - (validXMax - validXMin) * 0.15, validXMin, validXMax);
+    ptB.x = clamp(ptA.x + (validXMax - validXMin) * 0.28, validXMin, validXMax);
+    syncSliderFromA();
+    render();
+  });
+
+  window.addEventListener('resize', function(){ /* viewBox is responsive; nothing extra needed */ });
+
+  // ---------- init ----------
+  ensurePointHandles();
+  applyFunction('x^2');
+
+})();
+</script>
+</body>
+</html>
