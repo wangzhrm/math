@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AMC Study Notes</title>
+
+<!-- MathJax config (same delimiters as the question editor). MJ_CFG is reused when exporting a chapter as HTML. -->
+<script>
+    var MJ_CFG = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true
+        },
+        options: { enableMenu: false }
+    };
+    window.MathJax = JSON.parse(JSON.stringify(MJ_CFG));
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+<!-- ============ Styles shared by the app AND the exported HTML file ============ -->
+<style id="content-style">
+:root {
+    --ink: #0f1b2d;
+    --ink-2: #3b4a5f;
+    --muted: #6b7a90;
+    --desk: #e9eef4;
+    --sheet: #ffffff;
+    --line: #d9e0ea;
+    --cobalt: #2447d6;
+    --cobalt-soft: #e8edfc;
+    --green: #0b7a5e;
+    --green-soft: #eaf6f1;
+    --red: #c2362f;
+    --amber: #f2b632;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.chapter-title {
+    font-family: var(--serif);
+    font-size: clamp(28px, 4.2vw, 40px);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 32px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+}
+.knowledge { margin: 0 0 44px; }
+.muted { color: var(--muted); }
+
+/* Markdown body */
+.md { font-family: var(--serif); font-size: 17.5px; line-height: 1.75; color: var(--ink); overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3, .md h4 { font-family: var(--serif); line-height: 1.3; margin: 1.6em 0 .5em; color: var(--ink); }
+.md h1 { font-size: 1.6em; }
+.md h2 { font-size: 1.35em; }
+.md h3 { font-size: 1.15em; }
+.md h4 { font-size: 1em; font-style: italic; }
+.md p { margin: 0 0 1em; }
+.md ul, .md ol { padding-left: 1.5em; margin: 0 0 1em; }
+.md li { margin: .25em 0; }
+.md a { color: var(--cobalt); }
+.md blockquote { margin: 1.2em 0; padding: .4em 1.1em; border-left: 3px solid var(--cobalt); background: var(--cobalt-soft); color: var(--ink-2); }
+.md blockquote p:last-child { margin-bottom: 0; }
+.md code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .86em; background: #eef2f7; padding: .1em .35em; border-radius: 3px; }
+.md pre { background: var(--ink); color: #e6ebf3; padding: 14px 16px; border-radius: 6px; overflow: auto; line-height: 1.5; }
+.md pre code { background: none; padding: 0; color: inherit; }
+.md table { border-collapse: collapse; margin: 1.2em 0; display: block; overflow-x: auto; max-width: 100%; }
+.md th, .md td { border: 1px solid var(--line); padding: 6px 14px; }
+.md th { background: #f2f5f9; text-align: left; }
+.md img { max-width: 100%; height: auto; }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 1.8em 0; }
+mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+
+/* Practice questions */
+.practice { margin-top: 30px; }
+.practice-label { font-family: var(--sans); font-size: 14px; font-weight: 700; color: var(--ink-2); display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.practice-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.q-block { display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 6px; padding: 22px 0 24px; border-top: 1px solid var(--line); break-inside: avoid; }
+.practice-label + .q-block { border-top: 0; }
+.q-num { font-family: var(--serif); font-weight: 700; font-size: 26px; line-height: 1.1; color: var(--cobalt); font-variant-numeric: tabular-nums; }
+.q-main { min-width: 0; }
+.q-flags { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.badge-diff { font-family: var(--sans); font-size: 11.5px; font-weight: 600; color: var(--red); border: 1px solid currentColor; border-radius: 999px; padding: 1px 9px; }
+.q-body { display: flex; gap: 26px; align-items: flex-start; }
+.q-text { flex: 1; min-width: 0; font-family: var(--serif); font-size: 17.5px; line-height: 1.75; overflow-wrap: anywhere; }
+.q-diagram { flex: 0 0 min(36%, 300px); margin: 0; }
+.q-diagram img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 3px; background: #fff; }
+
+.sol-btn { font-family: var(--sans); margin-top: 16px; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--green); background: #fff; color: var(--green); cursor: pointer; }
+.sol-btn:hover { background: var(--green); color: #fff; }
+.solution { display: none; margin-top: 14px; padding: 14px 18px; background: var(--green-soft); border-left: 4px solid var(--green); border-radius: 0 6px 6px 0; }
+.solution.open { display: block; }
+.sol-label { font-family: var(--sans); font-size: 12.5px; font-weight: 700; color: var(--green); margin-bottom: 6px; }
+.sol-text { font-family: var(--serif); font-size: 17px; line-height: 1.75; overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+    .q-block { grid-template-columns: 1fr; }
+    .q-num { margin-bottom: 6px; }
+    .q-body { flex-direction: column; }
+    .q-diagram { flex: none; width: 100%; }
+}
+@media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .sol-btn { display: none !important; }
+    .solution:not(.open) { display: none !important; }
+    body.print-all-solutions .solution { display: block !important; }
+    .md pre { white-space: pre-wrap; }
+}
+</style>
+
+<!-- ============ App-only styles ============ -->
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: var(--sans); background: var(--desk); color: var(--ink); font-size: 14px; }
+button { font-family: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+
+.layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: 100vh; }
+
+/* Sidebar */
+.sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: var(--ink); color: #d5deeb; display: flex; flex-direction: column; padding: 24px 12px 18px; }
+.brand { padding: 0 12px 18px; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.brand b { display: block; font-family: var(--serif); font-size: 21px; color: #fff; letter-spacing: -0.01em; }
+.brand span { font-size: 12.5px; color: #8d9db4; }
+.nav-head { padding: 0 12px 8px; font-size: 12.5px; color: #8d9db4; }
+#chapterNav { flex: 1; }
+.nav-row { display: flex; align-items: stretch; border-radius: 6px; position: relative; }
+.nav-row.active { background: rgba(255,255,255,.1); }
+.nav-row.active::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--amber); }
+.nav-link { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: baseline; text-align: left; background: none; border: 0; color: inherit; padding: 9px 12px 9px 14px; font-size: 14px; line-height: 1.35; }
+.nav-row:hover:not(.active) { background: rgba(255,255,255,.06); }
+.nav-row.active .nav-link { color: #fff; font-weight: 600; }
+.nav-num { flex: 0 0 18px; color: #7f90a8; font-variant-numeric: tabular-nums; }
+.nav-title { overflow-wrap: anywhere; }
+.nav-tools { display: flex; align-items: center; gap: 2px; padding-right: 6px; }
+.nav-mini { background: none; border: 0; color: #9fb0c7; width: 24px; height: 24px; border-radius: 4px; font-size: 13px; }
+.nav-mini:hover:not(:disabled) { background: rgba(255,255,255,.14); color: #fff; }
+.nav-mini:disabled { opacity: .25; cursor: default; }
+.nav-empty { padding: 8px 14px; color: #8d9db4; font-size: 13px; }
+.side-foot { padding-top: 14px; }
+.side-foot .btn { width: 100%; }
+
+.scrim { display: none; }
+
+/* Main column */
+.main { min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 12px 28px; background: rgba(233,238,244,.92); backdrop-filter: blur(6px); }
+.topbar .spacer { flex: 1; }
+.icon-btn { background: none; border: 0; width: 36px; height: 36px; border-radius: 6px; font-size: 18px; color: var(--ink); }
+.icon-btn:hover { background: rgba(15,27,45,.08); }
+#menuBtn { display: none; }
+.mode-switch { display: inline-flex; background: #d6dee9; border-radius: 8px; padding: 3px; }
+.mode-switch button { border: 0; background: none; padding: 7px 18px; border-radius: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.mode-switch button.active { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(15,27,45,.15); }
+
+.stage { flex: 1; padding: 8px 28px 48px; }
+.sheet { max-width: 860px; margin: 0 auto; background: var(--sheet); border: 1px solid var(--line); border-radius: 4px; padding: 52px 60px 44px; box-shadow: 0 14px 30px -18px rgba(15,27,45,.28); }
+body.manage .sheet { max-width: 1140px; padding: 36px 40px 40px; }
+.loading, .empty { padding: 40px 0; color: var(--muted); }
+.empty h2 { font-family: var(--serif); color: var(--ink); margin: 0 0 8px; font-size: 24px; }
+.empty p { margin: 0 0 16px; max-width: 52ch; line-height: 1.6; }
+
+/* Buttons */
+.btn { background: var(--ink); color: #fff; border: 1px solid var(--ink); border-radius: 6px; padding: 9px 16px; font-size: 13.5px; font-weight: 600; }
+.btn:hover:not(:disabled) { background: #1d3050; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.secondary { background: #fff; color: var(--ink); border-color: #b8c3d3; }
+.btn.secondary:hover:not(:disabled) { background: #f2f5f9; }
+.btn.danger { background: #fff; color: var(--red); border-color: var(--red); }
+.btn.danger:hover:not(:disabled) { background: #fdeceb; }
+.mini { background: #fff; border: 1px solid #b8c3d3; color: var(--ink-2); border-radius: 5px; padding: 3px 9px; font-size: 12px; font-weight: 600; }
+.mini:hover { background: #f2f5f9; }
+.mini.danger { color: var(--red); border-color: var(--red); }
+.mini.danger:hover { background: #fdeceb; }
+.linkbtn { background: none; border: 0; color: var(--cobalt); font-size: 13px; font-weight: 600; padding: 2px 6px; }
+.linkbtn:hover { text-decoration: underline; }
+.check { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--ink-2); }
+
+/* View-mode export footer */
+.footer-actions { margin-top: 48px; padding-top: 22px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.footer-actions .fa-title { font-weight: 700; margin-right: 6px; }
+.footer-actions .check { margin-right: auto; }
+
+/* Management editor */
+.m-head { display: flex; gap: 14px; align-items: flex-end; margin-bottom: 30px; }
+.m-head .field { flex: 1; }
+.field label, .k-col label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+#titleInput { width: 100%; font-family: var(--serif); font-size: 30px; font-weight: 700; padding: 8px 12px; border: 1px solid #b8c3d3; border-radius: 6px; color: var(--ink); background: #fff; }
+.k-card { border: 1px solid var(--line); border-left: 4px solid var(--cobalt); border-radius: 4px; padding: 16px 20px 20px; margin-bottom: 26px; background: #fff; }
+.k-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.k-label { font-weight: 700; font-size: 15px; }
+.k-tools { display: flex; gap: 6px; }
+.k-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.k-col { min-width: 0; }
+.md-input { width: 100%; min-height: 170px; resize: vertical; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; line-height: 1.6; padding: 10px 12px; border: 1px solid #b8c3d3; border-radius: 6px; color: var(--ink); }
+.preview { min-height: 170px; border: 1px dashed #b8c3d3; border-radius: 6px; padding: 10px 16px; font-size: 16px; background: #fbfcfe; overflow: auto; }
+.k-questions { margin-top: 18px; padding-top: 4px; }
+.k-questions .practice { margin-top: 0; }
+.k-questions .btn { margin-top: 6px; }
+.small { font-size: 13px; }
+.q-block.missing .q-num { color: var(--muted); }
+.add-k { width: 100%; padding: 13px; border: 1.5px dashed #9fb0c7; background: #fbfcfe; color: var(--ink-2); border-radius: 6px; font-size: 14px; font-weight: 600; }
+.add-k:hover { background: var(--cobalt-soft); border-color: var(--cobalt); color: var(--cobalt); }
+
+.save-bar { position: sticky; bottom: 0; z-index: 25; display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 12px 28px; background: #fff; border-top: 1px solid var(--line); }
+#saveStatus { color: var(--muted); font-size: 13.5px; }
+#saveStatus.dirty { color: #a56800; font-weight: 600; }
+
+body:not(.manage) .manage-only { display: none !important; }
+body.manage .view-only { display: none !important; }
+
+/* Modals */
+.modal-back { position: fixed; inset: 0; background: rgba(15,27,45,.55); display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+.modal-back.show { display: flex; }
+.modal { background: #fff; border-radius: 10px; width: min(940px, 100%); max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
+.modal.login { width: min(400px, 100%); padding: 24px; }
+.modal.login h2 { margin: 0 0 4px; font-family: var(--serif); font-size: 22px; }
+.modal.login input { width: 100%; padding: 10px 12px; margin-top: 10px; border: 1px solid #b8c3d3; border-radius: 6px; font-size: 14px; }
+.err { color: var(--red); font-size: 13px; min-height: 20px; margin-top: 8px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.modal-head h2 { margin: 0; font-family: var(--serif); font-size: 21px; }
+.modal-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--line); }
+.modal.login .modal-foot { padding: 14px 0 0; border: 0; justify-content: flex-end; }
+.modal-foot > div { display: flex; gap: 8px; }
+.modal.picker { width: min(1180px, 100%); height: 90vh; max-height: 90vh; }
+.pick-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 310px minmax(0, 1fr); }
+.pick-filters { padding: 16px 18px 20px; border-right: 1px solid var(--line); overflow-y: auto; background: #f8fafc; }
+.pick-filters-title { font-weight: 700; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+.pick-filters input[type=search] { width: 100%; padding: 9px 12px; border: 1px solid #b8c3d3; border-radius: 6px; font-size: 14px; background: #fff; }
+.pick-filters .check { margin-top: 12px; }
+.pick-results { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.fgroup { margin-top: 18px; }
+.fgroup-label { font-size: 13px; font-weight: 700; color: var(--ink-2); margin-bottom: 7px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid #b8c3d3; background: #fff; border-radius: 999px; padding: 3px 12px; font-size: 12.5px; color: var(--ink-2); }
+.chip:hover { border-color: var(--cobalt); }
+.chip.on { background: var(--cobalt); border-color: var(--cobalt); color: #fff; }
+.pick-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px; font-size: 13px; color: var(--muted); background: #f5f7fa; border-bottom: 1px solid var(--line); }
+.pick-list { flex: 1; overflow-y: auto; padding: 8px 20px; min-height: 160px; }
+.pick-item { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 12px; padding: 12px 8px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 4px; }
+.pick-item:hover { background: #f5f7fa; }
+.pick-item.selected { background: var(--cobalt-soft); }
+.pick-item.already { opacity: .5; cursor: default; }
+.pick-check { width: 18px; height: 18px; margin-top: 3px; border: 2px solid #9fb0c7; border-radius: 4px; background: #fff; }
+.pick-item.selected .pick-check { background: var(--cobalt); border-color: var(--cobalt); box-shadow: inset 0 0 0 3px #fff; }
+.pick-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; align-items: center; }
+.tag { background: var(--cobalt-soft); color: var(--cobalt); border: 1px solid #b9c7f5; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; }
+.tag.note { background: #eef1f5; color: var(--ink-2); border-color: var(--line); }
+.pick-text { font-family: var(--serif); font-size: 15.5px; line-height: 1.6; max-height: 9em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); overflow-wrap: anywhere; }
+.pick-thumb { width: 92px; max-height: 80px; object-fit: contain; border: 1px solid var(--line); border-radius: 3px; background: #fff; }
+.pick-more { text-align: center; padding: 12px; }
+
+.toast { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13.5px; z-index: 200; display: none; max-width: 90vw; }
+.toast.show { display: block; }
+.toast.error { background: var(--red); }
+
+@media (max-width: 1050px) { .k-edit { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+    .pick-layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+    .pick-filters { border-right: 0; border-bottom: 1px solid var(--line); max-height: 34vh; }
+}
+@media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; left: 0; top: 0; width: 290px; z-index: 60; transform: translateX(-100%); transition: transform .2s ease; }
+    .sidebar.open { transform: none; }
+    .scrim.show { display: block; position: fixed; inset: 0; background: rgba(15,27,45,.5); z-index: 55; }
+    #menuBtn { display: inline-block; }
+    .topbar, .save-bar { padding-left: 14px; padding-right: 14px; }
+    .stage { padding: 4px 10px 32px; }
+    .sheet, body.manage .sheet { padding: 28px 18px; }
+    .m-head { flex-direction: column; align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
+
+@media print {
+    .sidebar, .topbar, .scrim, .footer-actions, .save-bar, .modal-back, .toast { display: none !important; }
+    .layout { display: block; }
+    body { background: #fff; }
+    .stage { padding: 0; }
+    .sheet { max-width: none !important; margin: 0; padding: 0 !important; border: 0; box-shadow: none; }
+}
+</style>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, deleteDoc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAYrqramoLbDr34pHWRec7bdLak1PZtWvo",
+    authDomain: "uestc-4720a.firebaseapp.com",
+    projectId: "uestc-4720a",
+    storageBucket: "uestc-4720a.firebasestorage.app",
+    messagingSenderId: "937055851089",
+    appId: "1:937055851089:web:333182923072c8bb7c9e70",
+    measurementId: "G-78XPBL1CGM"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Same collections as the question editor (read-only here) + one new collection for chapters.
+const COL_MASTER = "AMC_Master";
+const COL_CATEGORY = "AMC_Category";
+const COL_QUESTION = "AMC_Question";
+const COL_CHAPTER = "AMC_Chapter";
+
+/* ------------------------------------------------------------------ helpers */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const clone = o => JSON.parse(JSON.stringify(o));
+const uid = () => 'k_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const millis = t => (t && typeof t.toMillis === 'function') ? t.toMillis() : 0;
+
+function getParentId(x) {
+    if (!x || !x.parent) return null;
+    return typeof x.parent === 'string' ? x.parent : x.parent.id;
+}
+
+function toast(msg, type) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type === 'error' ? ' error' : '');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), type === 'error' ? 6000 : 2400);
+}
+
+/* MathJax: serialise typeset calls and tolerate it still loading */
+let mjQueue = Promise.resolve();
+function typeset(...els) {
+    const list = els.flat().filter(Boolean);
+    if (!list.length) return;
+    if (!(window.MathJax && MathJax.startup && MathJax.startup.promise)) {
+        setTimeout(() => typeset(list), 200);
+        return;
+    }
+    mjQueue = mjQueue
+        .then(() => MathJax.startup.promise)
+        .then(() => MathJax.typesetPromise(list))
+        .catch(e => console.warn('MathJax:', e));
+}
+function setHTML(el, html) {
+    if (window.MathJax && MathJax.typesetClear) { try { MathJax.typesetClear([el]); } catch (e) {} }
+    el.innerHTML = html;
+}
+
+/* ------------------------------------------------- markdown + LaTeX rendering
+   LaTeX is lifted out before Markdown/HTML processing (so underscores, stars and
+   < > inside formulas survive) and put back afterwards for MathJax to typeset.  */
+const MATH_RE = /(?<!\\)\$\$[\s\S]+?(?<!\\)\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\\begin\{([a-zA-Z*]+)\}[\s\S]+?\\end\{\1\}|(?<!\\)\$(?:\\.|[^$\\\n])+\$/g;
+
+function stashMath(src) {
+    const stash = [];
+    const text = String(src ?? '').replace(MATH_RE, m => { stash.push(m); return '\uE000' + (stash.length - 1) + '\uE001'; });
+    return { text, stash };
+}
+function restoreMath(html, stash) {
+    return html.replace(/\uE000(\d+)\uE001/g, (_, i) => esc(stash[+i]));
+}
+function renderMarkdown(md) {
+    const { text, stash } = stashMath(md);
+    let html;
+    try { html = marked.parse(text, { gfm: true, breaks: false }); }
+    catch (e) { html = '<p>' + esc(text) + '</p>'; }
+    return restoreMath(DOMPurify.sanitize(html), stash);
+}
+// Question / solution text: same treatment as the editor preview (line breaks kept), but sanitised.
+function renderRich(txt) {
+    const { text, stash } = stashMath(txt);
+    return restoreMath(DOMPurify.sanitize(text.replace(/\r?\n/g, '<br>')), stash);
+}
+
+/* -------------------------------------------------------------------- state */
+const state = {
+    mode: 'view',
+    chapters: [],
+    currentId: null,
+    draft: null,
+    dirty: false,
+    saving: false,
+    authed: false,
+    printSolutions: false,
+    renderToken: 0
+};
+const currentChapter = () => state.chapters.find(c => c.id === state.currentId) || null;
+const qCache = new Map(); // question id -> data | null (missing)
+
+/* --------------------------------------------------------------- data layer */
+async function loadChapters() {
+    const snap = await getDocs(collection(db, COL_CHAPTER));
+    const list = [];
+    snap.forEach(d => {
+        const x = d.data();
+        list.push({
+            id: d.id,
+            title: x.title || 'Untitled chapter',
+            order: typeof x.order === 'number' ? x.order : 0,
+            _created: millis(x.createdAt),
+            knowledges: (x.knowledges || []).map(k => ({
+                id: k.id || uid(),
+                markdown: k.markdown || '',
+                questionIds: Array.isArray(k.questionIds) ? k.questionIds : []
+            }))
+        });
+    });
+    list.sort((a, b) => (a.order - b.order) || (a._created - b._created));
+    state.chapters = list;
+}
+
+async function ensureQuestions(ids, force) {
+    const need = [...new Set(ids)].filter(id => force || !qCache.has(id));
+    await Promise.all(need.map(async id => {
+        try {
+            const s = await getDoc(doc(db, COL_QUESTION, id));
+            qCache.set(id, s.exists() ? s.data() : null);
+        } catch (e) { console.error(e); qCache.delete(id); }
+    }));
+}
+
+/* ---------------------------------------------------------- HTML builders */
+function questionBlockHTML(qid, n, opt = {}) {
+    const q = qCache.get(qid);
+    const tools = opt.manage ? `
+        <span class="manage-only" style="margin-left:auto; display:flex; gap:6px;">
+            <button class="mini" data-act="q-up" data-k="${opt.k}" data-q="${opt.qi}" title="Move up">↑</button>
+            <button class="mini" data-act="q-down" data-k="${opt.k}" data-q="${opt.qi}" title="Move down">↓</button>
+            <button class="mini danger" data-act="q-remove" data-k="${opt.k}" data-q="${opt.qi}">Remove</button>
+        </span>` : '';
+    if (!q) {
+        return `<div class="q-block missing"><div class="q-num">${n}</div><div class="q-main">
+            <div class="q-flags">${tools}</div>
+            <p class="muted">This question is no longer in the database. Remove it from this knowledge.</p></div></div>`;
+    }
+    const diag = q.diagramUrl
+        ? `<figure class="q-diagram"><img src="${esc(q.diagramUrl)}" alt="Diagram for question ${n}" loading="lazy" onerror="this.closest('figure').style.display='none'"></figure>` : '';
+    const diff = q.isDifficult ? '<span class="badge-diff">Difficult</span>' : '';
+    const flags = (diff || tools) ? `<div class="q-flags">${diff}${tools}</div>` : '';
+    const open = !!opt.openAll;
+    return `<div class="q-block">
+        <div class="q-num">${n}</div>
+        <div class="q-main">
+            ${flags}
+            <div class="q-body"><div class="q-text">${renderRich(q.latexQuestion)}</div>${diag}</div>
+            <button type="button" class="sol-btn" data-act="toggle-sol">${open ? 'Hide solution' : 'Show solution'}</button>
+            <div class="solution${open ? ' open' : ''}"><div class="sol-label">Solution</div><div class="sol-text">${renderRich(q.latexSolution)}</div></div>
+        </div>
+    </div>`;
+}
+
+// Read-only chapter markup, used by the view mode and the HTML export.
+function buildChapterHTML(ch, opt = {}) {
+    let n = 0;
+    const ks = ch.knowledges.map(k => {
+        const qs = k.questionIds.filter(id => qCache.get(id)).map(id => questionBlockHTML(id, ++n, opt)).join('');
+        const md = (k.markdown || '').trim() ? `<div class="md">${renderMarkdown(k.markdown)}</div>` : '';
+        return `<section class="knowledge">${md}${qs ? `<div class="practice"><div class="practice-label">Practice</div>${qs}</div>` : ''}</section>`;
+    }).join('');
+    return `<article class="chapter"><h1 class="chapter-title">${esc(ch.title)}</h1>${ks || '<p class="muted">This chapter has no content yet.</p>'}</article>`;
+}
+
+/* ------------------------------------------------------------------ render */
+function render(scrollTop) {
+    document.body.classList.toggle('manage', state.mode === 'manage');
+    document.body.classList.toggle('print-all-solutions', state.printSolutions);
+    $$('.mode-switch button').forEach(b => b.classList.toggle('active', b.dataset.mode === state.mode));
+    renderNav();
+    if (state.mode === 'manage') renderManage(); else renderView();
+    updateSaveBar();
+    if (scrollTop) window.scrollTo(0, 0);
+}
+
+function renderNav() {
+    const nav = $('#chapterNav');
+    if (!state.chapters.length) { nav.innerHTML = '<div class="nav-empty">No chapters yet</div>'; return; }
+    nav.innerHTML = state.chapters.map((c, i) => `
+        <div class="nav-row${c.id === state.currentId ? ' active' : ''}">
+            <button class="nav-link" data-act="nav" data-id="${c.id}"><span class="nav-num">${i + 1}</span><span class="nav-title">${esc(c.title)}</span></button>
+            <span class="nav-tools manage-only">
+                <button class="nav-mini" data-act="ch-up" data-id="${c.id}" title="Move chapter up" ${i === 0 ? 'disabled' : ''}>↑</button>
+                <button class="nav-mini" data-act="ch-down" data-id="${c.id}" title="Move chapter down" ${i === state.chapters.length - 1 ? 'disabled' : ''}>↓</button>
+            </span>
+        </div>`).join('');
+}
+
+async function renderView() {
+    const token = ++state.renderToken;
+    const box = $('#content');
+    if (!state.chapters.length) {
+        setHTML(box, `<div class="empty"><h2>No chapters yet</h2><p>Switch to Management mode to create the first chapter.</p></div>`);
+        return;
+    }
+    const ch = currentChapter();
+    if (!ch) {
+        setHTML(box, `<div class="empty"><h2>Choose a chapter</h2><p>Pick a chapter from the menu on the left.</p></div>`);
+        return;
+    }
+    setHTML(box, '<div class="loading">Loading chapter…</div>');
+    await ensureQuestions(ch.knowledges.flatMap(k => k.questionIds), true);
+    if (token !== state.renderToken) return; // user navigated away meanwhile
+    setHTML(box, buildChapterHTML(ch) + `
+        <div class="footer-actions">
+            <span class="fa-title">Print or export this chapter</span>
+            <label class="check"><input type="checkbox" id="optSolutions" ${state.printSolutions ? 'checked' : ''}> Include all solutions</label>
+            <button class="btn" data-act="print">Print / Save as PDF</button>
+            <button class="btn secondary" data-act="export-html">Download as HTML</button>
+        </div>`);
+    typeset(box);
+}
+
+function renderManage() {
+    state.renderToken++;
+    const box = $('#content');
+    const ch = state.draft;
+    if (!ch) {
+        setHTML(box, `<div class="empty"><h2>No chapter selected</h2><p>Create a chapter to start adding knowledge and practice questions.</p>
+            <button class="btn" data-act="ch-new">New chapter</button></div>`);
+        return;
+    }
+    const y = window.scrollY;
+    let n = 0;
+    const ks = ch.knowledges.map((k, ki) => {
+        const qs = k.questionIds.map((id, qi) => questionBlockHTML(id, ++n, { manage: true, k: ki, qi })).join('');
+        return `
+        <section class="k-card" data-k="${ki}">
+            <div class="k-head">
+                <span class="k-label">Knowledge ${ki + 1}</span>
+                <div class="k-tools">
+                    <button class="mini" data-act="k-up" data-k="${ki}" title="Move up" ${ki === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="mini" data-act="k-down" data-k="${ki}" title="Move down" ${ki === ch.knowledges.length - 1 ? 'disabled' : ''}>↓</button>
+                    <button class="mini danger" data-act="k-delete" data-k="${ki}">Delete</button>
+                </div>
+            </div>
+            <div class="k-edit">
+                <div class="k-col">
+                    <label for="md-${ki}">Markdown (use $…$ or $$…$$ for LaTeX)</label>
+                    <textarea id="md-${ki}" class="md-input" data-k="${ki}" spellcheck="false" placeholder="Write the knowledge here in Markdown…">${esc(k.markdown)}</textarea>
+                </div>
+                <div class="k-col">
+                    <label>Preview</label>
+                    <div class="md preview" data-preview="${ki}">${k.markdown.trim() ? renderMarkdown(k.markdown) : '<p class="muted">The preview appears here as you type.</p>'}</div>
+                </div>
+            </div>
+            <div class="k-questions">
+                <div class="practice"><div class="practice-label">Practice questions (${k.questionIds.length})</div>
+                ${qs || '<p class="muted small">No practice questions yet.</p>'}</div>
+                <button class="btn secondary" data-act="q-add" data-k="${ki}">Insert practice questions…</button>
+            </div>
+        </section>`;
+    }).join('');
+
+    setHTML(box, `
+        <div class="m-head">
+            <div class="field"><label for="titleInput">Chapter title</label>
+                <input id="titleInput" type="text" value="${esc(ch.title)}" placeholder="Chapter title"></div>
+            <button class="btn danger" data-act="ch-delete">Delete chapter</button>
+        </div>
+        ${ks}
+        <button class="add-k" data-act="k-add">Add knowledge</button>`);
+    $$('.md-input', box).forEach(autosize);
+    typeset(box);
+    window.scrollTo(0, y);
+}
+
+function autosize(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = Math.max(170, ta.scrollHeight + 2) + 'px';
+}
+
+function updateSaveBar() {
+    const s = $('#saveStatus'), b = $('#saveBtn');
+    s.textContent = state.saving ? 'Saving…' : state.dirty ? 'Unsaved changes' : 'All changes saved';
+    s.classList.toggle('dirty', state.dirty && !state.saving);
+    b.disabled = !state.dirty || state.saving || !state.draft;
+}
+function setDirty(v) { state.dirty = v; updateSaveBar(); }
+
+/* -------------------------------------------------------- navigation / modes */
+function selectChapter(id) {
+    if (state.dirty && !confirm('You have unsaved changes. Discard them?')) return false;
+    state.currentId = id;
+    state.dirty = false;
+    const ch = currentChapter();
+    state.draft = (state.mode === 'manage' && ch) ? clone(ch) : null;
+    try { history.replaceState(null, '', id ? '#' + id : location.pathname + location.search); } catch (e) {}
+    document.title = ch ? ch.title + ' | AMC Study Notes' : 'AMC Study Notes';
+    closeSidebar();
+    render(true);
+    return true;
+}
+
+function setMode(mode) {
+    if (mode === state.mode) return;
+    if (mode === 'manage') {
+        if (!state.authed) { openLogin(() => setMode('manage')); return; }
+        state.mode = 'manage';
+        state.draft = currentChapter() ? clone(currentChapter()) : null;
+        state.dirty = false;
+    } else {
+        if (state.dirty && !confirm('Discard unsaved changes and go back to view mode?')) return;
+        state.mode = 'view';
+        state.draft = null;
+        state.dirty = false;
+    }
+    closeSidebar();
+    render();
+}
+
+function openSidebar() { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); }
+function closeSidebar() { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show'); }
+
+/* ------------------------------------------------------------------ login */
+let afterLogin = null;
+function openLogin(cb) {
+    afterLogin = cb || null;
+    $('#loginErr').textContent = '';
+    $('#loginPass').value = '';
+    $('#loginModal').classList.add('show');
+    setTimeout(() => $('#loginUser').focus(), 30);
+}
+function closeLogin() { $('#loginModal').classList.remove('show'); afterLogin = null; }
+async function doLogin() {
+    const u = $('#loginUser').value, p = $('#loginPass').value;
+    const btn = $('#loginBtn');
+    btn.disabled = true;
+    try {
+        const snap = await getDocs(query(collection(db, COL_MASTER), where("username", "==", u), where("password", "==", p)));
+        if (!snap.empty) {
+            state.authed = true;
+            const cb = afterLogin;
+            closeLogin();
+            if (cb) cb();
+        } else {
+            $('#loginErr').textContent = 'Wrong username or password.';
+        }
+    } catch (e) {
+        $('#loginErr').textContent = 'Could not log in: ' + e.message;
+    }
+    btn.disabled = false;
+}
+
+/* ------------------------------------------------------- chapter operations */
+async function createChapter() {
+    if (state.dirty && !confirm('You have unsaved changes. Discard them?')) return;
+    const nextOrder = state.chapters.reduce((m, c) => Math.max(m, c.order), 0) + 1;
+    try {
+        const ref = await addDoc(collection(db, COL_CHAPTER), {
+            title: 'Untitled chapter', order: nextOrder, knowledges: [],
+            createdAt: new Date(), updatedAt: new Date()
+        });
+        state.chapters.push({ id: ref.id, title: 'Untitled chapter', order: nextOrder, knowledges: [] });
+        state.dirty = false;
+        selectChapter(ref.id);
+        setTimeout(() => { const t = $('#titleInput'); if (t) { t.focus(); t.select(); } }, 50);
+    } catch (e) { toast('Could not create chapter: ' + e.message, 'error'); }
+}
+
+async function deleteChapter() {
+    const ch = currentChapter();
+    if (!ch) return;
+    if (!confirm(`Delete the chapter "${ch.title}" and all of its knowledge? The questions themselves stay in the database. This cannot be undone.`)) return;
+    try {
+        await deleteDoc(doc(db, COL_CHAPTER, ch.id));
+        state.chapters = state.chapters.filter(c => c.id !== ch.id);
+        state.dirty = false;
+        selectChapter(state.chapters[0] ? state.chapters[0].id : null);
+        toast('Chapter deleted');
+    } catch (e) { toast('Could not delete: ' + e.message, 'error'); }
+}
+
+async function moveChapter(id, dir) {
+    const arr = state.chapters;
+    const i = arr.findIndex(c => c.id === id), j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    const batch = writeBatch(db);
+    let changes = 0;
+    arr.forEach((c, idx) => {
+        if (c.order !== idx + 1) { c.order = idx + 1; batch.update(doc(db, COL_CHAPTER, c.id), { order: c.order }); changes++; }
+    });
+    renderNav();
+    try { if (changes) await batch.commit(); }
+    catch (e) { toast('Could not reorder: ' + e.message, 'error'); await loadChapters(); renderNav(); }
+}
+
+async function saveDraft() {
+    const d = state.draft;
+    if (!d || state.saving) return;
+    const title = (d.title || '').trim();
+    if (!title) { toast('The chapter needs a title.', 'error'); return; }
+    state.saving = true; updateSaveBar();
+    try {
+        const knowledges = d.knowledges.map(k => ({ id: k.id, markdown: k.markdown || '', questionIds: [...k.questionIds] }));
+        await setDoc(doc(db, COL_CHAPTER, d.id), { title, knowledges, updatedAt: new Date() }, { merge: true });
+        const ch = currentChapter();
+        if (ch) { ch.title = title; ch.knowledges = clone(knowledges); }
+        d.title = title;
+        state.dirty = false;
+        document.title = title + ' | AMC Study Notes';
+        renderNav();
+        toast('Saved');
+    } catch (e) {
+        toast('Could not save: ' + e.message, 'error');
+    }
+    state.saving = false; updateSaveBar();
+}
+
+/* --------------------------------------------------- knowledge / question ops */
+function moveInArray(arr, i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return false;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    return true;
+}
+
+/* ------------------------------------------------------ question picker modal */
+const PAGE = 30;
+const picker = { ki: null, selected: new Set(), search: '', diffOnly: false, groupSel: new Map(), page: 1, all: [], cats: [], catName: {} };
+
+async function openPicker(ki) {
+    picker.ki = ki;
+    picker.selected = new Set();
+    picker.search = ''; picker.diffOnly = false; picker.groupSel = new Map(); picker.page = 1;
+    $('#pickSearch').value = ''; $('#pickDiff').checked = false;
+    $('#pickerModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    $('#pickList').innerHTML = '<div class="loading">Loading questions…</div>';
+    $('#pickGroups').innerHTML = '';
+    updatePickCount();
+    try {
+        const [cs, qs] = await Promise.all([getDocs(collection(db, COL_CATEGORY)), getDocs(collection(db, COL_QUESTION))]);
+        picker.cats = []; picker.catName = {};
+        cs.forEach(d => {
+            const x = d.data();
+            picker.cats.push({ id: d.id, name: x.name || '', order: x.order || 0, parent: getParentId(x) });
+            picker.catName[d.id] = x.name || '';
+        });
+        picker.all = [];
+        qs.forEach(d => { const x = d.data(); qCache.set(d.id, x); picker.all.push({ ...x, id: d.id }); });
+        picker.all.sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+        renderPickerFilters();
+        renderPickerResults();
+    } catch (e) {
+        $('#pickList').innerHTML = `<div class="loading">Could not load questions: ${esc(e.message)}</div>`;
+    }
+}
+function closePicker() {
+    $('#pickerModal').classList.remove('show');
+    document.body.style.overflow = '';
+    picker.ki = null;
+}
+
+function descendants(id) {
+    const kids = picker.cats.filter(c => c.parent === id).sort((a, b) => a.order - b.order);
+    return kids.flatMap(k => [k, ...descendants(k.id)]);
+}
+function renderPickerFilters() {
+    const roots = picker.cats.filter(c => !c.parent).sort((a, b) => a.order - b.order);
+    $('#pickGroups').innerHTML = roots.map(r => {
+        const desc = descendants(r.id);
+        if (!desc.length) return '';
+        const sel = picker.groupSel.get(r.id) || new Set();
+        return `<div class="fgroup"><div class="fgroup-label">${esc(r.name)}</div><div class="chips">
+            ${desc.map(c => `<button type="button" class="chip${sel.has(c.id) ? ' on' : ''}" data-root="${r.id}" data-cat="${c.id}">${esc(c.name)}</button>`).join('')}
+        </div></div>`;
+    }).join('');
+}
+function pickerFiltered() {
+    const s = picker.search.trim().toLowerCase();
+    return picker.all.filter(q => {
+        if (picker.diffOnly && !q.isDifficult) return false;
+        if (s && !((q.latexQuestion || '') + ' ' + (q.latexSolution || '')).toLowerCase().includes(s)) return false;
+        for (const [, set] of picker.groupSel) {
+            if (set.size && !(q.categories || []).some(id => set.has(id))) return false;
+        }
+        return true;
+    });
+}
+function renderPickerResults() {
+    const list = pickerFiltered();
+    const shown = list.slice(0, picker.page * PAGE);
+    const existing = new Set(state.draft && picker.ki !== null ? state.draft.knowledges[picker.ki].questionIds : []);
+    const box = $('#pickList');
+    setHTML(box, shown.length ? shown.map(q => {
+        const already = existing.has(q.id);
+        const tags = (q.categories || []).map(id => `<span class="tag">${esc(picker.catName[id] || '…')}</span>`).join('');
+        const flags = (q.isDifficult ? '<span class="badge-diff" style="font-size:11px">Difficult</span>' : '') + (already ? '<span class="tag note">Already in this knowledge</span>' : '');
+        return `<div class="pick-item${picker.selected.has(q.id) ? ' selected' : ''}${already ? ' already' : ''}" data-id="${q.id}">
+            <div class="pick-check"></div>
+            <div><div class="pick-meta">${tags}${flags}</div><div class="pick-text">${renderRich(q.latexQuestion)}</div></div>
+            ${q.diagramUrl ? `<img class="pick-thumb" src="${esc(q.diagramUrl)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '<span></span>'}
+        </div>`;
+    }).join('') : '<div class="loading">No questions match these filters.</div>');
+    $('#pickInfo').textContent = `${list.length} matching question${list.length === 1 ? '' : 's'}` + (list.length > shown.length ? ` (showing ${shown.length})` : '');
+    if (list.length > shown.length) box.insertAdjacentHTML('beforeend', '<div class="pick-more"><button class="btn secondary" data-act="pick-more">Show more</button></div>');
+    typeset(box);
+}
+function updatePickCount() {
+    const n = picker.selected.size;
+    $('#pickSelCount').textContent = n + ' selected';
+    $('#pickInsert').disabled = n === 0;
+}
+function insertPicked() {
+    if (picker.ki === null || !state.draft) return;
+    const k = state.draft.knowledges[picker.ki];
+    let added = 0;
+    picker.selected.forEach(id => { if (!k.questionIds.includes(id)) { k.questionIds.push(id); added++; } });
+    closePicker();
+    if (added) { setDirty(true); renderManage(); toast(`${added} question${added === 1 ? '' : 's'} inserted. Remember to save.`); }
+}
+
+/* -------------------------------------------------------------------- export */
+function exportHTML() {
+    const ch = currentChapter();
+    if (!ch) return;
+    const body = buildChapterHTML(ch, { openAll: state.printSolutions });
+    const css = $('#content-style').textContent;
+    const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(ch.title)}</title>
+<style>${css}
+body{margin:0;background:var(--desk);color:var(--ink);font-family:var(--sans)}
+.sheet{max-width:860px;margin:32px auto;background:#fff;padding:52px 60px;border:1px solid var(--line);border-radius:4px}
+@media (max-width:700px){.sheet{margin:0;padding:28px 18px;border:0}}
+@media print{body{background:#fff}.sheet{margin:0;padding:0;border:0;max-width:none}}
+</style>
+<script>window.MathJax=${JSON.stringify(window.MJ_CFG)};<\/script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
+</head><body><main class="sheet">${body}</main>
+<script>document.addEventListener('click',function(e){var b=e.target.closest('.sol-btn');if(!b)return;var s=b.nextElementSibling;var o=s.classList.toggle('open');b.textContent=o?'Hide solution':'Show solution';});<\/script>
+</body></html>`;
+    const name = (ch.title.replace(/[\\/:*?"<>|]+/g, '').trim().replace(/\s+/g, '_')) || 'chapter';
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name + '.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+
+/* ------------------------------------------------------------ event wiring */
+const previewTimers = {};
+function schedulePreview(ki) {
+    clearTimeout(previewTimers[ki]);
+    previewTimers[ki] = setTimeout(() => {
+        const pv = $(`[data-preview="${ki}"]`);
+        if (!pv || !state.draft) return;
+        const md = state.draft.knowledges[ki].markdown;
+        setHTML(pv, md.trim() ? renderMarkdown(md) : '<p class="muted">The preview appears here as you type.</p>');
+        typeset(pv);
+    }, 250);
+}
+
+const actions = {
+    'nav': el => selectChapter(el.dataset.id),
+    'mode': el => setMode(el.dataset.mode),
+    'ch-new': () => createChapter(),
+    'ch-delete': () => deleteChapter(),
+    'ch-up': el => moveChapter(el.dataset.id, -1),
+    'ch-down': el => moveChapter(el.dataset.id, 1),
+    'close-sidebar': () => closeSidebar(),
+    'toggle-sol': el => {
+        const s = el.nextElementSibling;
+        const open = s.classList.toggle('open');
+        el.textContent = open ? 'Hide solution' : 'Show solution';
+    },
+    'save': () => saveDraft(),
+    'print': () => window.print(),
+    'export-html': () => exportHTML(),
+    'k-add': () => {
+        state.draft.knowledges.push({ id: uid(), markdown: '', questionIds: [] });
+        setDirty(true); renderManage();
+        const cards = $$('.k-card');
+        const last = cards[cards.length - 1];
+        if (last) { last.scrollIntoView({ block: 'center' }); const t = $('.md-input', last); if (t) t.focus(); }
+    },
+    'k-up': el => { if (moveInArray(state.draft.knowledges, +el.dataset.k, -1)) { setDirty(true); renderManage(); } },
+    'k-down': el => { if (moveInArray(state.draft.knowledges, +el.dataset.k, 1)) { setDirty(true); renderManage(); } },
+    'k-delete': el => {
+        const k = state.draft.knowledges[+el.dataset.k];
+        const extra = k.questionIds.length ? ` It has ${k.questionIds.length} practice question link(s); the questions stay in the database.` : '';
+        if (!confirm('Delete this knowledge?' + extra)) return;
+        state.draft.knowledges.splice(+el.dataset.k, 1);
+        setDirty(true); renderManage();
+    },
+    'q-up': el => { if (moveInArray(state.draft.knowledges[+el.dataset.k].questionIds, +el.dataset.q, -1)) { setDirty(true); renderManage(); } },
+    'q-down': el => { if (moveInArray(state.draft.knowledges[+el.dataset.k].questionIds, +el.dataset.q, 1)) { setDirty(true); renderManage(); } },
+    'q-remove': el => { state.draft.knowledges[+el.dataset.k].questionIds.splice(+el.dataset.q, 1); setDirty(true); renderManage(); },
+    'q-add': el => openPicker(+el.dataset.k),
+    'pick-close': () => closePicker(),
+    'pick-insert': () => insertPicked(),
+    'pick-more': () => { picker.page++; renderPickerResults(); },
+    'pick-all': () => {
+        const existing = new Set(state.draft.knowledges[picker.ki].questionIds);
+        pickerFiltered().forEach(q => { if (!existing.has(q.id)) picker.selected.add(q.id); });
+        renderPickerResults(); updatePickCount();
+    },
+    'pick-clear': () => { picker.selected.clear(); renderPickerResults(); updatePickCount(); },
+    'pick-reset': () => {
+        picker.search = ''; picker.diffOnly = false; picker.groupSel = new Map(); picker.page = 1;
+        $('#pickSearch').value = ''; $('#pickDiff').checked = false;
+        renderPickerFilters(); renderPickerResults();
+    },
+    'login-submit': () => doLogin(),
+    'login-cancel': () => closeLogin()
+};
+
+document.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (chip) {
+        const root = chip.dataset.root, cat = chip.dataset.cat;
+        if (!picker.groupSel.has(root)) picker.groupSel.set(root, new Set());
+        const set = picker.groupSel.get(root);
+        set.has(cat) ? set.delete(cat) : set.add(cat);
+        chip.classList.toggle('on', set.has(cat));
+        picker.page = 1;
+        renderPickerResults();
+        return;
+    }
+    const item = e.target.closest('.pick-item');
+    if (item && !item.classList.contains('already')) {
+        const id = item.dataset.id;
+        picker.selected.has(id) ? picker.selected.delete(id) : picker.selected.add(id);
+        item.classList.toggle('selected', picker.selected.has(id));
+        updatePickCount();
+        return;
+    }
+    const el = e.target.closest('[data-act]');
+    if (el && actions[el.dataset.act]) actions[el.dataset.act](el, e);
+    // click on the dark backdrop closes the picker
+    if (e.target.id === 'pickerModal') closePicker();
+});
+
+document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.classList.contains('md-input')) {
+        const ki = +t.dataset.k;
+        state.draft.knowledges[ki].markdown = t.value;
+        autosize(t);
+        setDirty(true);
+        schedulePreview(ki);
+    } else if (t.id === 'titleInput') {
+        state.draft.title = t.value;
+        setDirty(true);
+    } else if (t.id === 'pickSearch') {
+        picker.search = t.value; picker.page = 1; renderPickerResults();
+    }
+});
+document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.id === 'pickDiff') { picker.diffOnly = t.checked; picker.page = 1; renderPickerResults(); }
+    else if (t.id === 'optSolutions') { state.printSolutions = t.checked; document.body.classList.toggle('print-all-solutions', t.checked); }
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        if ($('#pickerModal').classList.contains('show')) closePicker();
+        else if ($('#loginModal').classList.contains('show')) closeLogin();
+        else closeSidebar();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && state.mode === 'manage') { e.preventDefault(); saveDraft(); }
+    if (e.key === 'Enter' && (e.target.id === 'loginUser' || e.target.id === 'loginPass')) doLogin();
+});
+window.addEventListener('beforeunload', e => { if (state.dirty) { e.preventDefault(); e.returnValue = ''; } });
+$('#menuBtn').addEventListener('click', openSidebar);
+
+/* --------------------------------------------------------------------- boot */
+(async function init() {
+    $('#chapterNav').innerHTML = '<div class="nav-empty">Loading…</div>';
+    $('#content').innerHTML = '<div class="loading">Loading…</div>';
+    try {
+        await loadChapters();
+    } catch (e) {
+        $('#chapterNav').innerHTML = '';
+        $('#content').innerHTML = `<div class="empty"><h2>Could not load chapters</h2><p>${esc(e.message)}</p>
+            <p>If this is a permissions error, allow access to the <b>${COL_CHAPTER}</b> collection in your Firestore rules.</p></div>`;
+        return;
+    }
+    const hash = decodeURIComponent(location.hash.slice(1));
+    const start = state.chapters.find(c => c.id === hash) || state.chapters[0] || null;
+    state.currentId = start ? start.id : null;
+    if (start) document.title = start.title + ' | AMC Study Notes';
+    render();
+})();
+</script>
+</head>
+<body>
+
+<div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Chapters">
+        <div class="brand"><b>AMC Study Notes</b><span>Knowledge and practice, chapter by chapter</span></div>
+        <div class="nav-head">Chapters</div>
+        <nav id="chapterNav"></nav>
+        <div class="side-foot manage-only"><button class="btn secondary" data-act="ch-new">New chapter</button></div>
+    </aside>
+    <div class="scrim" id="scrim" data-act="close-sidebar"></div>
+
+    <div class="main">
+        <header class="topbar">
+            <button class="icon-btn" id="menuBtn" aria-label="Open chapter menu">☰</button>
+            <div class="spacer"></div>
+            <div class="mode-switch" role="group" aria-label="Mode">
+                <button data-act="mode" data-mode="view" class="active">View</button>
+                <button data-act="mode" data-mode="manage">Management</button>
+            </div>
+        </header>
+
+        <div class="stage">
+            <main class="sheet" id="content"></main>
+        </div>
+
+        <div class="save-bar manage-only">
+            <span id="saveStatus">All changes saved</span>
+            <button class="btn" id="saveBtn" data-act="save" disabled>Save changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Login -->
+<div class="modal-back" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div class="modal login">
+        <h2 id="loginTitle">Management login</h2>
+        <p class="muted" style="margin:0">Use the same account as the question editor.</p>
+        <input type="text" id="loginUser" placeholder="Username" autocomplete="username">
+        <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+        <div class="err" id="loginErr"></div>
+        <div class="modal-foot">
+            <button class="btn secondary" data-act="login-cancel">Cancel</button>
+            <button class="btn" id="loginBtn" data-act="login-submit">Log in</button>
+        </div>
+    </div>
+</div>
+
+<!-- Question picker -->
+<div class="modal-back" id="pickerModal" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+    <div class="modal picker">
+        <div class="modal-head">
+            <h2 id="pickTitle">Insert practice questions</h2>
+            <button class="icon-btn" data-act="pick-close" aria-label="Close">✕</button>
+        </div>
+        <div class="pick-layout">
+            <aside class="pick-filters" aria-label="Filters">
+                <div class="pick-filters-title">Filters <button class="linkbtn" data-act="pick-reset">Clear filters</button></div>
+                <input type="search" id="pickSearch" placeholder="Search question or solution text">
+                <label class="check"><input type="checkbox" id="pickDiff"> Difficult only</label>
+                <div id="pickGroups"></div>
+            </aside>
+            <section class="pick-results">
+                <div class="pick-bar">
+                    <span id="pickInfo"></span>
+                    <span><button class="linkbtn" data-act="pick-all">Select all matching</button><button class="linkbtn" data-act="pick-clear">Clear selection</button></span>
+                </div>
+                <div class="pick-list" id="pickList"></div>
+            </section>
+        </div>
+        <div class="modal-foot">
+            <span id="pickSelCount">0 selected</span>
+            <div>
+                <button class="btn secondary" data-act="pick-close">Cancel</button>
+                <button class="btn" id="pickInsert" data-act="pick-insert" disabled>Insert selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+</body>
+</html>
