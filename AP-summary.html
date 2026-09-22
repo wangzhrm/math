@@ -39,6 +39,8 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .btn-group {
   display: flex;
@@ -57,6 +59,8 @@ button:hover { opacity: 0.9; }
   background: var(--primary);
   color: white;
 }
+.print-mode-btn { background: #fa8c16; color: white; }
+.do-print-btn { background: #52c41a; color: white; display: none; }
 
 /* --- Filter Panel Styles --- */
 .filter-panel { 
@@ -93,6 +97,7 @@ button:hover { opacity: 0.9; }
   color: var(--primary);
   display: flex;
   align-items: center;
+  gap: 12px;
   border-bottom: 1px solid #f1f5f9;
 }
 
@@ -134,6 +139,14 @@ button:hover { opacity: 0.9; }
   border-color: #91d5ff;
   font-size: 13px;
 }
+
+/* --- Select-to-print styles --- */
+.print-checkbox { display: none; width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+body.selection-mode .print-checkbox { display: inline-block; }
+body.selection-mode .item-actions,
+body.selection-mode .add-btn,
+body.selection-mode .filter-panel { display: none; }
+body.selection-mode .do-print-btn { display: inline-block; }
 
 /* Modal Styles */
 .modal-overlay {
@@ -216,6 +229,18 @@ button:hover { opacity: 0.9; }
   font-size: 12px;
   padding: 5px 12px;
 }
+
+/* --- Print rules --- */
+@media print {
+    body { background: white; padding: 0; }
+    .header, .filter-panel, .item-actions, .add-btn, .print-mode-btn, .do-print-btn, .print-checkbox { display: none !important; }
+    .chapter-section { box-shadow: none; border: none; margin-bottom: 40px; }
+
+    /* Hide the entire chapter section if no items inside are selected for print */
+    .chapter-section:not(:has(.selected-for-print)) { display: none !important; }
+
+    .knowledge-item:not(.selected-for-print) { display: none !important; }
+}
 </style>
 </head>
 <body>
@@ -224,6 +249,8 @@ button:hover { opacity: 0.9; }
         <h1>Knowledge Bank</h1>
         <div class="btn-group">
             <button class="add-btn" onclick="openAddModal()">+ Add New</button>
+            <button class="print-mode-btn" id="toggleSelectBtn" onclick="toggleSelectionMode()">Select to Print</button>
+            <button class="do-print-btn" onclick="executePrint()">Print to PDF</button>
         </div>
     </div>
 
@@ -404,6 +431,7 @@ function renderUI() {
 
         const section = document.createElement('div');
         section.className = "chapter-section";
+        section.id = `sec-${chap.id}`;
 
         let itemsHtml = items.map(item => {
             const linkedCount = counts[item.id] || 0;
@@ -411,7 +439,8 @@ function renderUI() {
             const barStyle = `background: linear-gradient(to right, #e6f7ff ${percentage}%, transparent ${percentage}%);`;
 
             return `
-            <div class="knowledge-item" style="${barStyle}">
+            <div class="knowledge-item" id="item-${item.id}" style="${barStyle}">
+                <input type="checkbox" class="print-checkbox item-check" data-chap="${chap.id}" onchange="syncPrintClass('${item.id}')">
                 <div class="content-display">${item.latex}</div>
                 <div class="item-actions">
                     <button class="action-btn q-btn" onclick="openQuestionFocus('${item.id}')">Q (${linkedCount})</button>
@@ -424,7 +453,10 @@ function renderUI() {
         }).join('');
 
         section.innerHTML = `
-            <div class="chapter-banner">${chap.name}</div>
+            <div class="chapter-banner">
+                <input type="checkbox" class="print-checkbox chapter-check" onchange="toggleChapterItems('${chap.id}', this.checked)">
+                ${chap.name}
+            </div>
             <div class="knowledge-container">${itemsHtml}</div>
         `;
         lib.appendChild(section);
@@ -432,6 +464,26 @@ function renderUI() {
 
     if (window.MathJax) MathJax.typesetPromise();
 }
+
+// --- Select-to-print handlers ---
+window.toggleSelectionMode = () => {
+    document.body.classList.toggle('selection-mode');
+    document.getElementById('toggleSelectBtn').innerText =
+        document.body.classList.contains('selection-mode') ? "Cancel" : "Select to Print";
+};
+
+window.syncPrintClass = (itemId) => {
+    document.getElementById(`item-${itemId}`)?.classList.toggle('selected-for-print');
+};
+
+window.toggleChapterItems = (chapId, isChecked) => {
+    document.querySelectorAll(`.item-check[data-chap="${chapId}"]`).forEach(cb => {
+        cb.checked = isChecked;
+        cb.closest('.knowledge-item')?.classList.toggle('selected-for-print', isChecked);
+    });
+};
+
+window.executePrint = () => window.print();
 
 window.updatePreview = () => {
     const input = document.getElementById('latexInput').value;
