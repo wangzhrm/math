@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit Circle and the Sine Wave</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1f2430;--muted:#8a8f9c;--grid:#e3e4e0;--card:#fff;--blue:#2563eb;--red:#e11d48;--green:#059669;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161b;--fg:#e8e9ee;--muted:#8b909c;--grid:#2a2d36;--card:#1c1f26;--blue:#60a5fa;--red:#fb7185;--green:#34d399}}
+:root[data-theme="dark"]{--bg:#14161b;--fg:#e8e9ee;--muted:#8b909c;--grid:#2a2d36;--card:#1c1f26;--blue:#60a5fa;--red:#fb7185;--green:#34d399}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}
+h1{font-size:1.3rem;margin:4px 0 4px}
+p.sub{margin:0 0 12px;color:var(--muted);font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--grid);border-radius:12px;padding:8px}
+canvas{display:block;width:100%;touch-action:none;cursor:grab}
+.panel{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;margin-top:12px}
+.read{font-size:1rem;font-variant-numeric:tabular-nums}
+.read b{color:var(--red)}
+.read .s{color:var(--blue)}
+input[type=range]{flex:1;min-width:160px}
+button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--grid);background:var(--card);color:var(--fg);cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+<h1>Why is the sine function a wave?</h1>
+<p class="sub">Drag the red point around the unit circle. Its height (sin θ) is carried across to the graph on the right.</p>
+<div class="card"><canvas id="c"></canvas></div>
+<div class="panel">
+  <div class="read">θ = <b id="rt">0</b> rad (<span id="dg">0°</span>) &nbsp; sin θ = <b class="s" id="sv">0.000</b></div>
+  <input type="range" id="sl" min="0" max="6.2832" step="0.001" value="0" aria-label="angle">
+  <button id="pl">▶ Play</button>
+</div>
+</main>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let th=Math.PI/6,W,H,R,cx,cy,x0,gw,playing=false,drag=false,last=0;
+const TAU=Math.PI*2;
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function resize(){
+  const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;
+  W=r.width;H=Math.max(260,W*0.46);
+  cv.style.height=H+'px';cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);
+  R=Math.min(H/2-26,W*0.19);cx=R+34;cy=H/2;x0=cx+R+44;gw=W-x0-26;draw();
+}
+function fmt(t){ // pi-fraction labels
+  const m={0:'0',1:'π/2',2:'π',3:'3π/2',4:'2π'};return m[t];
+}
+function line(x1,y1,x2,y2,col,w,dash){
+  ctx.beginPath();ctx.setLineDash(dash||[]);ctx.strokeStyle=col;ctx.lineWidth=w||1;
+  ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
+}
+function draw(){
+  const fg=css('--fg'),mu=css('--muted'),gr=css('--grid'),bl=css('--blue'),rd=css('--red'),gn=css('--green');
+  ctx.clearRect(0,0,W,H);ctx.font='12px system-ui,sans-serif';
+  const px=cx+R*Math.cos(th),py=cy-R*Math.sin(th);
+  const gx=x0+th/TAU*gw,gy=py;
+  // circle axes + circle
+  line(cx-R-18,cy,cx+R+18,cy,mu,1);line(cx,cy-R-18,cx,cy+R+18,mu,1);
+  ctx.beginPath();ctx.strokeStyle=fg;ctx.lineWidth=1.5;ctx.arc(cx,cy,R,0,TAU);ctx.stroke();
+  ctx.fillStyle=mu;ctx.textAlign='left';ctx.fillText('1',cx+R+4,cy+14);ctx.fillText('1',cx+5,cy-R+12);
+  // graph axes and grid
+  for(let i=0;i<=4;i++){const x=x0+i*gw/4;line(x,cy-R-8,x,cy+R+8,gr,1);
+    ctx.fillStyle=mu;ctx.textAlign='center';ctx.fillText(fmt(i),x,cy+R+24);}
+  [-1,1].forEach(v=>{line(x0,cy-v*R,x0+gw,cy-v*R,gr,1);ctx.textAlign='right';ctx.fillStyle=mu;ctx.fillText(v,x0-6,cy-v*R+4)});
+  line(x0-6,cy,x0+gw+10,cy,mu,1);line(x0,cy-R-14,x0,cy+R+14,mu,1);
+  ctx.textAlign='left';ctx.fillStyle=mu;ctx.fillText('y = sin x',x0+gw-58,cy-R-4);
+  // full faint curve
+  ctx.beginPath();ctx.strokeStyle=gr;ctx.lineWidth=2;
+  for(let i=0;i<=240;i++){const t=i/240*TAU,x=x0+i/240*gw,y=cy-R*Math.sin(t);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}
+  ctx.stroke();
+  // traced portion
+  ctx.beginPath();ctx.strokeStyle=bl;ctx.lineWidth=3;
+  const n=Math.max(2,Math.round(th/TAU*240));
+  for(let i=0;i<=n;i++){const t=th*i/n,x=x0+t/TAU*gw,y=cy-R*Math.sin(t);i?ctx.lineTo(x,y):ctx.moveTo(x,y)}
+  ctx.stroke();
+  // angle arc, terminal side, sin segment
+  ctx.beginPath();ctx.strokeStyle=rd;ctx.lineWidth=1.5;ctx.arc(cx,cy,R*0.25,0,-th,true);ctx.stroke();
+  line(cx,cy,px,py,rd,2.5);
+  line(px,py,px,cy,bl,3);
+  ctx.fillStyle=bl;ctx.textAlign='left';
+  if(Math.abs(py-cy)>16)ctx.fillText('sin θ',px+(Math.cos(th)>=0?6:-40),(py+cy)/2);
+  // dotted connector to graph
+  line(px,py,gx,gy,rd,1.5,[5,5]);
+  line(gx,gy,gx,cy,mu,1,[3,4]);
+  // points
+  ctx.beginPath();ctx.fillStyle=rd;ctx.arc(px,py,8,0,TAU);ctx.fill();
+  ctx.beginPath();ctx.fillStyle=rd;ctx.arc(gx,gy,6,0,TAU);ctx.fill();
+  // labels on graph
+  const s=Math.sin(th);ctx.fillStyle=fg;ctx.textAlign='center';
+  const lbl=`(${th.toFixed(2)}, ${s.toFixed(2)})`;
+  ctx.fillText(lbl,Math.min(Math.max(gx,x0+40),x0+gw-30),gy+(s>=0?-14:22));
+  ctx.fillStyle=gn;ctx.fillText('x = '+th.toFixed(2),gx,cy+(s>=0?16:-8));
+  // readouts
+  document.getElementById('rt').textContent=th.toFixed(3);
+  document.getElementById('dg').textContent=(th*180/Math.PI).toFixed(1)+'°';
+  document.getElementById('sv').textContent=s.toFixed(3);
+  document.getElementById('sl').value=th;
+}
+function setFromPointer(e){
+  const r=cv.getBoundingClientRect(),x=e.clientX-r.left-cx,y=cy-(e.clientY-r.top);
+  let a=Math.atan2(y,x);if(a<0)a+=TAU;th=a;draw();
+}
+cv.addEventListener('pointerdown',e=>{
+  const r=cv.getBoundingClientRect();
+  if(e.clientX-r.left>x0-20)return; // only start on the circle side
+  drag=true;playing=false;pl.textContent='▶ Play';cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';setFromPointer(e);
+});
+cv.addEventListener('pointermove',e=>{if(drag)setFromPointer(e)});
+['pointerup','pointercancel'].forEach(k=>cv.addEventListener(k,()=>{drag=false;cv.style.cursor='grab'}));
+const sl=document.getElementById('sl'),pl=document.getElementById('pl');
+sl.addEventListener('input',()=>{th=parseFloat(sl.value);draw()});
+pl.addEventListener('click',()=>{playing=!playing;pl.textContent=playing?'⏸ Pause':'▶ Play';last=0;if(playing)requestAnimationFrame(tick)});
+function tick(t){
+  if(!playing)return;if(last)th=(th+(t-last)/1000*0.9)%TAU;last=t;draw();requestAnimationFrame(tick);
+}
+window.addEventListener('resize',resize);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+resize();
+</script>
+</body>
+</html>
